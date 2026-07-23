@@ -1,5 +1,5 @@
 -- SCHEMA DATABASE UNTUK APLIKASI ABSENSI GURU OLAHRAGA (PJOK)
--- POSTGRESQL DDL (MENGGUNAKAN VARCHAR STRING ID KONTINU, TANPA TYPE UUID)
+-- POSTGRESQL DDL (MENGGUNAKAN TIPE TEXT UNTUK SELURUH KOLOM STRING & ID)
 
 -- 1. ENUM TYPES
 DO $$ BEGIN
@@ -28,61 +28,61 @@ END $$;
 
 -- 2. TABEL USERS (Profil / Pengguna System)
 CREATE TABLE IF NOT EXISTS users (
-    id VARCHAR(100) PRIMARY KEY,
-    nama VARCHAR(150) NOT NULL,
-    username VARCHAR(50) UNIQUE NOT NULL,
-    email VARCHAR(150) UNIQUE,
+    id TEXT PRIMARY KEY,
+    nama TEXT NOT NULL,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE,
     role user_role NOT NULL DEFAULT 'guru',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 3. TABEL GURU
 CREATE TABLE IF NOT EXISTS guru (
-    id VARCHAR(100) PRIMARY KEY,
-    user_id VARCHAR(100) REFERENCES users(id) ON DELETE CASCADE,
-    nama_guru VARCHAR(150) NOT NULL,
-    nip VARCHAR(50) UNIQUE NOT NULL,
-    mata_pelajaran VARCHAR(50) DEFAULT 'PJOK',
+    id TEXT PRIMARY KEY,
+    user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+    nama_guru TEXT NOT NULL,
+    nip TEXT UNIQUE NOT NULL,
+    mata_pelajaran TEXT DEFAULT 'PJOK',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 4. TABEL KELAS
 CREATE TABLE IF NOT EXISTS kelas (
-    id VARCHAR(100) PRIMARY KEY,
-    nama_kelas VARCHAR(50) NOT NULL,
-    tingkat VARCHAR(10) NOT NULL,
+    id TEXT PRIMARY KEY,
+    nama_kelas TEXT NOT NULL,
+    tingkat TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 5. TABEL SISWA
 CREATE TABLE IF NOT EXISTS siswa (
-    id VARCHAR(100) PRIMARY KEY,
-    nis VARCHAR(30) UNIQUE NOT NULL,
-    nama_siswa VARCHAR(150) NOT NULL,
-    kelas_id VARCHAR(100) REFERENCES kelas(id) ON DELETE CASCADE,
+    id TEXT PRIMARY KEY,
+    nis TEXT UNIQUE NOT NULL,
+    nama_siswa TEXT NOT NULL,
+    kelas_id TEXT REFERENCES kelas(id) ON DELETE CASCADE,
     jenis_kelamin jenis_kelamin_enum NOT NULL DEFAULT 'L',
-    qr_code VARCHAR(100),
+    qr_code TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 6. TABEL JADWAL PELAJARAN
 CREATE TABLE IF NOT EXISTS jadwal_pelajaran (
-    id VARCHAR(100) PRIMARY KEY,
-    guru_id VARCHAR(100) REFERENCES guru(id) ON DELETE CASCADE,
-    kelas_id VARCHAR(100) REFERENCES kelas(id) ON DELETE CASCADE,
+    id TEXT PRIMARY KEY,
+    guru_id TEXT REFERENCES guru(id) ON DELETE CASCADE,
+    kelas_id TEXT REFERENCES kelas(id) ON DELETE CASCADE,
     hari hari_enum NOT NULL,
     jam_mulai TIME NOT NULL,
     jam_selesai TIME NOT NULL,
-    mata_pelajaran VARCHAR(50) DEFAULT 'PJOK',
-    lokasi VARCHAR(100) DEFAULT 'Lap. Utama Sekolah',
+    mata_pelajaran TEXT DEFAULT 'PJOK',
+    lokasi TEXT DEFAULT 'Lap. Utama Sekolah',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 7. TABEL ABSENSI
 CREATE TABLE IF NOT EXISTS absensi (
-    id VARCHAR(100) PRIMARY KEY,
-    siswa_id VARCHAR(100) REFERENCES siswa(id) ON DELETE CASCADE,
-    jadwal_id VARCHAR(100) REFERENCES jadwal_pelajaran(id) ON DELETE CASCADE,
+    id TEXT PRIMARY KEY,
+    siswa_id TEXT REFERENCES siswa(id) ON DELETE CASCADE,
+    jadwal_id TEXT REFERENCES jadwal_pelajaran(id) ON DELETE CASCADE,
     tanggal DATE NOT NULL DEFAULT CURRENT_DATE,
     status status_absensi_enum NOT NULL DEFAULT 'Hadir',
     keterangan TEXT,
@@ -96,9 +96,9 @@ CREATE TABLE IF NOT EXISTS absensi (
 
 -- 8. TABEL AUDIT LOGS
 CREATE TABLE IF NOT EXISTS audit_logs (
-    id VARCHAR(100) PRIMARY KEY,
-    user_id VARCHAR(100) REFERENCES users(id) ON DELETE SET NULL,
-    aksi VARCHAR(100) NOT NULL,
+    id TEXT PRIMARY KEY,
+    user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+    aksi TEXT NOT NULL,
     detail TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -153,7 +153,7 @@ BEGIN
   -- Insert ke tabel public.users
   INSERT INTO public.users (id, nama, username, email, role)
   VALUES (
-    NEW.id::VARCHAR,
+    NEW.id::TEXT,
     COALESCE(NEW.raw_user_meta_data->>'nama', SPLIT_PART(NEW.email, '@', 1)),
     COALESCE(NEW.raw_user_meta_data->>'username', SPLIT_PART(NEW.email, '@', 1)),
     NEW.email,
@@ -167,8 +167,8 @@ BEGIN
   -- Insert ke tabel public.guru
   INSERT INTO public.guru (id, user_id, nama_guru, nip, mata_pelajaran)
   VALUES (
-    CONCAT('guru_', NEW.id::VARCHAR),
-    NEW.id::VARCHAR,
+    CONCAT('guru_', NEW.id::TEXT),
+    NEW.id::TEXT,
     COALESCE(NEW.raw_user_meta_data->>'nama', SPLIT_PART(NEW.email, '@', 1)),
     COALESCE(NULLIF(NEW.raw_user_meta_data->>'nip', ''), CONCAT('NIP-', FLOOR(EXTRACT(EPOCH FROM NOW())))),
     'PJOK'
