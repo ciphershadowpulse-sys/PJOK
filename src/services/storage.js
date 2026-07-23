@@ -148,8 +148,8 @@ export async function loginUser(identifier, password) {
     const { data: dbUser } = await supabase
       .from('users')
       .select('*')
-      .or(`email.eq.${targetEmail},username.eq.${cleanId},id.eq.${authData.user.id}`)
-      .single();
+      .eq('id', authData.user.id)
+      .maybeSingle();
 
     const userObj = dbUser || {
       id: authData.user.id,
