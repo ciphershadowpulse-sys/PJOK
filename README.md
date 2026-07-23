@@ -24,7 +24,7 @@ Aplikasi Web Absensi khusus Guru Olahraga (PJOK) sekolah yang dirancang modern, 
 
 1. Clone repository ini:
    ```bash
-   git clone https://github.com/Githuub234/PJOK.git
+   git clone https://github.com/ciphershadowpulse-sys/PJOK.git
    cd PJOK
    ```
 2. Install dependensi:
