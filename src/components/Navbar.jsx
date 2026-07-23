@@ -9,7 +9,7 @@ export default function Navbar({ user, currentView, onNavigate, onLogout, isOffl
     <header className="bg-slate-900 text-white sticky top-0 z-40 shadow-md border-b border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          
+
           {/* Logo & Brand */}
           <div className="flex items-center space-x-3 cursor-pointer" onClick={() => onNavigate('dashboard')}>
             <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center font-bold text-white shadow-lg shadow-emerald-500/20">
@@ -28,11 +28,10 @@ export default function Navbar({ user, currentView, onNavigate, onLogout, isOffl
             <nav className="hidden md:flex items-center space-x-1 bg-slate-800/60 p-1 rounded-2xl border border-slate-700/60 text-xs font-bold">
               <button
                 onClick={() => onNavigate('dashboard')}
-                className={`px-3 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 ${
-                  currentView === 'dashboard' || currentView === 'absensi_form'
-                    ? 'bg-emerald-600 text-white shadow-md'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-                }`}
+                className={`px-3 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 ${currentView === 'dashboard' || currentView === 'absensi_form'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                  }`}
               >
                 <LayoutDashboard className="w-3.5 h-3.5" />
                 <span>Dashboard</span>
@@ -40,11 +39,10 @@ export default function Navbar({ user, currentView, onNavigate, onLogout, isOffl
 
               <button
                 onClick={() => onNavigate('kelola')}
-                className={`px-3 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 ${
-                  currentView === 'kelola'
-                    ? 'bg-emerald-600 text-white shadow-md'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-                }`}
+                className={`px-3 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 ${currentView === 'kelola'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                  }`}
               >
                 <Database className="w-3.5 h-3.5 text-amber-400" />
                 <span>Kelola Data</span>
@@ -52,11 +50,10 @@ export default function Navbar({ user, currentView, onNavigate, onLogout, isOffl
 
               <button
                 onClick={() => onNavigate('riwayat')}
-                className={`px-3 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 ${
-                  currentView === 'riwayat'
-                    ? 'bg-emerald-600 text-white shadow-md'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-                }`}
+                className={`px-3 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 ${currentView === 'riwayat'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                  }`}
               >
                 <Calendar className="w-3.5 h-3.5 text-sky-400" />
                 <span>Riwayat</span>
@@ -64,11 +61,10 @@ export default function Navbar({ user, currentView, onNavigate, onLogout, isOffl
 
               <button
                 onClick={() => onNavigate('laporan')}
-                className={`px-3 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 ${
-                  currentView === 'laporan'
-                    ? 'bg-emerald-600 text-white shadow-md'
-                    : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
-                }`}
+                className={`px-3 py-1.5 rounded-xl transition-all flex items-center space-x-1.5 ${currentView === 'laporan'
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'text-slate-300 hover:text-white hover:bg-slate-700/50'
+                  }`}
               >
                 <FileText className="w-3.5 h-3.5 text-purple-400" />
                 <span>Laporan</span>
@@ -126,9 +122,8 @@ export default function Navbar({ user, currentView, onNavigate, onLogout, isOffl
         <div className="md:hidden flex items-center justify-around bg-slate-950 border-t border-slate-800 px-2 py-2 text-[11px] font-bold">
           <button
             onClick={() => onNavigate('dashboard')}
-            className={`flex flex-col items-center space-y-0.5 px-3 py-1 rounded-xl ${
-              currentView === 'dashboard' || currentView === 'absensi_form' ? 'text-emerald-400' : 'text-slate-400'
-            }`}
+            className={`flex flex-col items-center space-y-0.5 px-3 py-1 rounded-xl ${currentView === 'dashboard' || currentView === 'absensi_form' ? 'text-emerald-400' : 'text-slate-400'
+              }`}
           >
             <LayoutDashboard className="w-4 h-4" />
             <span>Dashboard</span>
@@ -136,9 +131,8 @@ export default function Navbar({ user, currentView, onNavigate, onLogout, isOffl
 
           <button
             onClick={() => onNavigate('kelola')}
-            className={`flex flex-col items-center space-y-0.5 px-3 py-1 rounded-xl ${
-              currentView === 'kelola' ? 'text-emerald-400' : 'text-slate-400'
-            }`}
+            className={`flex flex-col items-center space-y-0.5 px-3 py-1 rounded-xl ${currentView === 'kelola' ? 'text-emerald-400' : 'text-slate-400'
+              }`}
           >
             <Database className="w-4 h-4" />
             <span>Kelola Data</span>
@@ -146,9 +140,8 @@ export default function Navbar({ user, currentView, onNavigate, onLogout, isOffl
 
           <button
             onClick={() => onNavigate('riwayat')}
-            className={`flex flex-col items-center space-y-0.5 px-3 py-1 rounded-xl ${
-              currentView === 'riwayat' ? 'text-emerald-400' : 'text-slate-400'
-            }`}
+            className={`flex flex-col items-center space-y-0.5 px-3 py-1 rounded-xl ${currentView === 'riwayat' ? 'text-emerald-400' : 'text-slate-400'
+              }`}
           >
             <Calendar className="w-4 h-4" />
             <span>Riwayat</span>
@@ -156,9 +149,8 @@ export default function Navbar({ user, currentView, onNavigate, onLogout, isOffl
 
           <button
             onClick={() => onNavigate('laporan')}
-            className={`flex flex-col items-center space-y-0.5 px-3 py-1 rounded-xl ${
-              currentView === 'laporan' ? 'text-emerald-400' : 'text-slate-400'
-            }`}
+            className={`flex flex-col items-center space-y-0.5 px-3 py-1 rounded-xl ${currentView === 'laporan' ? 'text-emerald-400' : 'text-slate-400'
+              }`}
           >
             <FileText className="w-4 h-4" />
             <span>Laporan</span>
