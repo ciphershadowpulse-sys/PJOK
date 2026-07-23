@@ -130,16 +130,34 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
   // Handle QR Code or NIS/NISN scan match
   const handleQrCodeScanned = (scannedText) => {
     const cleanScanned = String(scannedText).trim().toLowerCase();
-    const found = siswaList.find(s =>
-      (s.qr_code && s.qr_code.toLowerCase() === cleanScanned) ||
-      (s.nis && s.nis.toLowerCase() === cleanScanned) ||
-      (s.nisn && s.nisn.toLowerCase() === cleanScanned)
-    );
+    const digitsOnly = cleanScanned.replace(/[^0-9]/g, '');
+
+    const found = siswaList.find(s => {
+      const sNis = String(s.nis || '').trim().toLowerCase();
+      const sNisn = String(s.nisn || '').trim().toLowerCase();
+      const sQr = String(s.qr_code || '').trim().toLowerCase();
+      const sId = String(s.id || '').trim().toLowerCase();
+
+      // Direct exact matches
+      if (sQr === cleanScanned || sNis === cleanScanned || sNisn === cleanScanned || sId === cleanScanned) {
+        return true;
+      }
+
+      // Smart digit extraction match
+      if (digitsOnly && digitsOnly.length >= 3) {
+        if (sNis && (sNis === digitsOnly || digitsOnly.includes(sNis) || sNis.includes(digitsOnly))) return true;
+        if (sNisn && (sNisn === digitsOnly || digitsOnly.includes(sNisn) || sNisn.includes(digitsOnly))) return true;
+        if (sQr && (sQr === digitsOnly || digitsOnly.includes(sQr) || sQr.includes(digitsOnly))) return true;
+      }
+
+      return false;
+    });
+
     if (found) {
       handleStatusChange(found.id, 'Hadir');
       alert(`✅ Siswa ${found.nama_siswa} (NIS: ${found.nis}) berhasil di-absensi HADIR!`);
     } else {
-      alert(`⚠️ Data NIS/NISN/QR [${scannedText}] tidak cocok dengan siswa di kelas ${jadwal.nama_kelas}.`);
+      alert(`⚠️ Hasil Scan [${scannedText}] tidak cocok dengan data NIS/NISN siswa mana pun di kelas ${jadwal.nama_kelas || ''}.`);
     }
   };
 

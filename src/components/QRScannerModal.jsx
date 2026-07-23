@@ -84,12 +84,12 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
 
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const code = jsQR(imageData.data, imageData.width, imageData.height, {
-        inversionAttempts: 'dontInvert'
+        inversionAttempts: 'attemptBoth'
       });
 
       if (code && code.data) {
         const now = Date.now();
-        if (now - lastScanTimeRef.current > 2000) {
+        if (now - lastScanTimeRef.current > 1500) {
           lastScanTimeRef.current = now;
           handleScanResult(code.data);
         }
@@ -107,15 +107,48 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
     startCamera(newMode);
   };
 
-  const handleScanResult = (rawNisn) => {
-    const nisn = String(rawNisn).replace(/[^a-zA-Z0-9-]/g, '').trim();
-    if (!nisn) return;
+  const parseRawQrData = (rawText) => {
+    if (!rawText) return '';
+    let str = String(rawText).trim();
 
-    setScanNotif(`✅ NIS/QR terdeteksi: ${nisn}`);
+    // 1. Try parsing JSON format e.g. {"nis": "3163288603"} or {"nisn": "3163288603"}
+    if (str.startsWith('{') && str.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(str);
+        if (parsed.nis) return String(parsed.nis).trim();
+        if (parsed.nisn) return String(parsed.nisn).trim();
+        if (parsed.id) return String(parsed.id).trim();
+        if (parsed.code) return String(parsed.code).trim();
+      } catch (e) {}
+    }
+
+    // 2. Try parsing URL query parameters e.g. https://domain.com/absensi?nis=3163288603
+    if (str.includes('http://') || str.includes('https://')) {
+      try {
+        const url = new URL(str);
+        const nis = url.searchParams.get('nis') || url.searchParams.get('nisn') || url.searchParams.get('code') || url.searchParams.get('id');
+        if (nis) return nis.trim();
+      } catch (e) {}
+    }
+
+    // 3. Try key-value format e.g. "NISN: 3163288603" or "NIS: 1001" or "Scan untuk Absensi: 1001"
+    const match = str.match(/(?:nisn|nis|code|id|absensi)[\s:=]+([a-zA-Z0-9-]+)/i);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+
+    return str;
+  };
+
+  const handleScanResult = (rawNisn) => {
+    const cleanCode = parseRawQrData(rawNisn);
+    if (!cleanCode) return;
+
+    setScanNotif(`✅ NIS/QR terdeteksi: ${cleanCode}`);
     stopCamera();
 
     setTimeout(() => {
-      onScanSuccess(nisn);
+      onScanSuccess(cleanCode);
       setScanNotif(null);
       onClose();
     }, 800);
