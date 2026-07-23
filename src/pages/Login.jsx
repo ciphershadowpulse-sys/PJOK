@@ -52,10 +52,7 @@ export default function Login({ onLoginSuccess }) {
       }
     } catch (err) {
       console.error('Registration/Login error:', err);
-      let errMsg = err?.message || (typeof err === 'string' ? err : '');
-      if (!errMsg || errMsg === '{}' || errMsg === '[object Object]') {
-        errMsg = 'Gagal memproses pendaftaran. Pastikan email Gmail dan password terisi dengan benar (min 6 karakter).';
-      }
+      const errMsg = err?.message || String(err);
       setError(errMsg);
     } finally {
       setLoading(false);

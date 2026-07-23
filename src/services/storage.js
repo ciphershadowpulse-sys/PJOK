@@ -36,14 +36,17 @@ export async function registerUser({ nama, email, username, nip, password }) {
   });
 
   if (authError) {
-    const rawMsg = authError.message || (typeof authError === 'object' ? JSON.stringify(authError) : String(authError));
+    const rawMsg = authError?.message || authError?.error_description || String(authError);
     if (rawMsg.toLowerCase().includes('rate limit')) {
       throw new Error('Batas pengiriman email Supabase terlampaui (Rate Limit). Solusi: Matikan centang "Confirm Email" di Supabase Dashboard -> Authentication -> Providers -> Email.');
     }
-    if (rawMsg.includes('already registered') || rawMsg.includes('User already registered')) {
-      throw new Error('Email atau Username ini sudah terdaftar di database Supabase. Silakan gunakan username lain atau login.');
+    if (rawMsg.toLowerCase().includes('already registered') || rawMsg.toLowerCase().includes('already exists')) {
+      throw new Error('Email atau Username ini sudah terdaftar di database Supabase. Silakan gunakan email/username lain atau login.');
     }
-    throw new Error(rawMsg === '{}' ? 'Gagal mendaftar akun ke Supabase. Periksa kembali format email dan password Anda.' : rawMsg);
+    if (rawMsg.toLowerCase().includes('password should be')) {
+      throw new Error('Password minimal 6 karakter.');
+    }
+    throw new Error(rawMsg);
   }
 
   const userId = authData?.user?.id;
