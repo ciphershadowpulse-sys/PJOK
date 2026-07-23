@@ -47,7 +47,12 @@ export default function Login({ onLoginSuccess }) {
         onLoginSuccess(userObj);
       }
     } catch (err) {
-      setError(err.message || 'Gagal memproses otentikasi. Silakan periksa kembali data Anda.');
+      console.error('Registration/Login error:', err);
+      let errMsg = err?.message || (typeof err === 'string' ? err : '');
+      if (!errMsg || errMsg === '{}' || errMsg === '[object Object]') {
+        errMsg = 'Gagal memproses pendaftaran ke Supabase. Pastikan email dan password terisi dengan benar (min 6 karakter).';
+      }
+      setError(errMsg);
     } finally {
       setLoading(false);
     }
@@ -86,7 +91,7 @@ export default function Login({ onLoginSuccess }) {
           {error && (
             <div className="mb-6 bg-rose-500/10 border border-rose-500/30 rounded-2xl p-4 flex items-start space-x-3 text-rose-300 text-xs font-semibold animate-shake">
               <ShieldAlert className="w-5 h-5 flex-shrink-0 text-rose-400" />
-              <span>{error}</span>
+              <span>{String(error)}</span>
             </div>
           )}
 
