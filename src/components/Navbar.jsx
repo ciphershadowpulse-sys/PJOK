@@ -76,7 +76,7 @@ export default function Navbar({ user, currentView, onNavigate, onLogout, isOffl
             </nav>
           )}
 
-          {/* Realtime Clock & Network Status */}
+          {/* Realtime Clock & Supabase Live Status */}
           <div className="hidden lg:flex items-center space-x-3 text-xs bg-slate-800/80 px-3.5 py-1.5 rounded-lg border border-slate-700">
             <div className="flex items-center space-x-1.5 text-slate-300">
               <Clock className="w-4 h-4 text-emerald-400" />
@@ -87,19 +87,11 @@ export default function Navbar({ user, currentView, onNavigate, onLogout, isOffl
 
             <div className="h-4 w-px bg-slate-700"></div>
 
-            {/* Offline/Online Badge */}
             <div className="flex items-center space-x-1">
-              {isOffline ? (
-                <span className="inline-flex items-center text-amber-400 font-medium space-x-1">
-                  <WifiOff className="w-3.5 h-3.5 animate-pulse" />
-                  <span>Offline</span>
-                </span>
-              ) : (
-                <span className="inline-flex items-center text-emerald-400 font-medium space-x-1">
-                  <Wifi className="w-3.5 h-3.5" />
-                  <span>Online</span>
-                </span>
-              )}
+              <span className="inline-flex items-center text-emerald-400 font-bold space-x-1">
+                <Database className="w-3.5 h-3.5" />
+                <span>Supabase Live</span>
+              </span>
             </div>
           </div>
 

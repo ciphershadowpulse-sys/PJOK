@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Lock, LogIn, ShieldAlert, Activity, MapPin, WifiOff, UserPlus, Mail, CheckCircle2 } from 'lucide-react';
+import { User, Lock, LogIn, ShieldAlert, Activity, MapPin, Database, UserPlus, Mail, CheckCircle2 } from 'lucide-react';
 import { loginUser, registerUser } from '../services/storage';
 
 export default function Login({ onLoginSuccess }) {
@@ -268,8 +268,8 @@ export default function Login({ onLoginSuccess }) {
             <span>Tag GPS & Foto Lapangan</span>
           </div>
           <div className="flex flex-col items-center p-2 rounded-xl bg-slate-900/50 border border-slate-800">
-            <WifiOff className="w-4 h-4 text-amber-400 mb-1" />
-            <span>Integrasi Supabase DB</span>
+            <Database className="w-4 h-4 text-emerald-400 mb-1" />
+            <span>Supabase Live DB</span>
           </div>
         </div>
 
