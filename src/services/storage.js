@@ -74,7 +74,7 @@ export async function registerUser({ nama, email, username, nip, password }) {
 
   // Fallback ID jika auth signup dibatasi rate limit
   if (!userId) {
-    userId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `user-${Date.now()}`;
+    userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
   }
 
   const newUser = {
@@ -86,6 +86,7 @@ export async function registerUser({ nama, email, username, nip, password }) {
   };
 
   const newGuru = {
+    id: `guru_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     user_id: userId,
     nama_guru: nama.trim(),
     nip: nip ? nip.trim() : `NIP-${Date.now()}`,
@@ -419,14 +420,26 @@ export async function getAuditLogs() {
   return [];
 }
 
+// AUDIT LOG SERVICE
+export async function logAudit(userId, aksi, detail) {
+  if (isSupabaseConfigured && navigator.onLine) {
+    try {
+      const logId = `log_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      await supabase.from('audit_logs').insert([{ id: logId, user_id: userId, aksi, detail }]);
+    } catch (e) {
+      console.warn('Audit log insert note:', e);
+    }
+  }
+}
+
 // MUTATIONS (SUPABASE DIRECT)
 export async function addOrUpdateSiswa(siswaData) {
   if (isSupabaseConfigured && navigator.onLine) {
     const payload = {
+      id: siswaData.id || `siswa_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
       ...siswaData,
       qr_code: siswaData.qr_code || `QR-${siswaData.nis}`
     };
-    if (!payload.id) delete payload.id;
 
     const { data, error } = await supabase.from('siswa').upsert([payload]).select('*');
     if (error) throw error;
@@ -437,9 +450,12 @@ export async function addOrUpdateSiswa(siswaData) {
 
 export async function addOrUpdateSiswaBatch(siswaArray) {
   if (isSupabaseConfigured && navigator.onLine) {
-    const payload = siswaArray.map(s => {
-      const p = { ...s, qr_code: s.qr_code || `QR-${s.nis}` };
-      if (!p.id) delete p.id;
+    const payload = siswaArray.map((s, idx) => {
+      const p = {
+        id: s.id || `siswa_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
+        ...s,
+        qr_code: s.qr_code || `QR-${s.nis}`
+      };
       return p;
     });
 
@@ -452,8 +468,10 @@ export async function addOrUpdateSiswaBatch(siswaArray) {
 
 export async function addOrUpdateJadwal(jadwalData) {
   if (isSupabaseConfigured && navigator.onLine) {
-    const payload = { ...jadwalData };
-    if (!payload.id) delete payload.id;
+    const payload = {
+      id: jadwalData.id || `jadwal_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      ...jadwalData
+    };
 
     const { data, error } = await supabase.from('jadwal_pelajaran').upsert([payload]).select('*');
     if (error) throw error;
