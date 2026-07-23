@@ -36,7 +36,28 @@ export async function registerUser({ nama, email, username, nip, password }) {
   });
 
   if (authError) {
-    const rawMsg = authError?.message || authError?.error_description || String(authError);
+    let rawMsg = '';
+    if (typeof authError === 'string') {
+      rawMsg = authError;
+    } else if (authError?.message && typeof authError.message === 'string') {
+      rawMsg = authError.message;
+    } else if (authError?.error_description && typeof authError.error_description === 'string') {
+      rawMsg = authError.error_description;
+    } else if (authError?.msg && typeof authError.msg === 'string') {
+      rawMsg = authError.msg;
+    } else {
+      try {
+        const jsonStr = JSON.stringify(authError);
+        if (jsonStr && jsonStr !== '{}' && jsonStr !== '[]') {
+          rawMsg = jsonStr;
+        }
+      } catch (e) {}
+    }
+
+    if (!rawMsg || rawMsg.trim() === '' || rawMsg.trim() === '{}' || rawMsg.trim() === '[object Object]') {
+      rawMsg = 'Gagal mendaftar akun ke Supabase. Periksa kembali email dan password (minimal 6 karakter).';
+    }
+
     if (rawMsg.toLowerCase().includes('rate limit')) {
       throw new Error('Batas pengiriman email Supabase terlampaui (Rate Limit). Solusi: Matikan centang "Confirm Email" di Supabase Dashboard -> Authentication -> Providers -> Email.');
     }

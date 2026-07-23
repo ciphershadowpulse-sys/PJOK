@@ -52,7 +52,27 @@ export default function Login({ onLoginSuccess }) {
       }
     } catch (err) {
       console.error('Registration/Login error:', err);
-      const errMsg = err?.message || String(err);
+      let errMsg = '';
+      if (typeof err === 'string') {
+        errMsg = err;
+      } else if (err?.message && typeof err.message === 'string') {
+        errMsg = err.message;
+      } else if (err?.error_description && typeof err.error_description === 'string') {
+        errMsg = err.error_description;
+      } else if (err?.msg && typeof err.msg === 'string') {
+        errMsg = err.msg;
+      } else {
+        try {
+          const jsonStr = JSON.stringify(err);
+          if (jsonStr && jsonStr !== '{}' && jsonStr !== '[]') {
+            errMsg = jsonStr;
+          }
+        } catch (e) {}
+      }
+
+      if (!errMsg || errMsg.trim() === '' || errMsg.trim() === '{}' || errMsg.trim() === '[object Object]') {
+        errMsg = 'Gagal memproses pendaftaran. Pastikan nama, email resmi, username, dan password (min 6 karakter) terisi dengan benar.';
+      }
       setError(errMsg);
     } finally {
       setLoading(false);
