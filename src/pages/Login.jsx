@@ -68,7 +68,13 @@ export default function Login({ onLoginSuccess }) {
       setError('');
       await loginWithGoogle();
     } catch (err) {
-      setError(err.message || 'Gagal terhubung dengan layanan Google Login.');
+      console.error('Google OAuth error:', err);
+      const rawErr = err?.message || String(err);
+      if (rawErr.toLowerCase().includes('not enabled') || rawErr.toLowerCase().includes('unsupported provider')) {
+        setError('Layanan Login Otomatis Google belum diaktifkan di Supabase. Silakan mendaftar & login menggunakan formulir Email Gmail (@gmail.com) dan Password di bawah ini.');
+      } else {
+        setError(rawErr);
+      }
       setLoading(false);
     }
   };
