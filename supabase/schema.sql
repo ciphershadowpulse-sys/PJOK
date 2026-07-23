@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 9. HAPUS PEMBATASAN RLS (ROW LEVEL SECURITY) AGAR PENDAFTARAN BISA DISIMPAN DI TABEL
+-- 9. HAPUS PEMBATASAN RLS (ROW LEVEL SECURITY) DAN BUAT KEBIJAKAN IZIN PERMISSIVE
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE guru DISABLE ROW LEVEL SECURITY;
 ALTER TABLE kelas DISABLE ROW LEVEL SECURITY;
@@ -111,6 +111,35 @@ ALTER TABLE siswa DISABLE ROW LEVEL SECURITY;
 ALTER TABLE jadwal_pelajaran DISABLE ROW LEVEL SECURITY;
 ALTER TABLE absensi DISABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs DISABLE ROW LEVEL SECURITY;
+
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE guru ENABLE ROW LEVEL SECURITY;
+ALTER TABLE kelas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE siswa ENABLE ROW LEVEL SECURITY;
+ALTER TABLE jadwal_pelajaran ENABLE ROW LEVEL SECURITY;
+ALTER TABLE absensi ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow all on users" ON users;
+CREATE POLICY "Allow all on users" ON users FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all on guru" ON guru;
+CREATE POLICY "Allow all on guru" ON guru FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all on kelas" ON kelas;
+CREATE POLICY "Allow all on kelas" ON kelas FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all on siswa" ON siswa;
+CREATE POLICY "Allow all on siswa" ON siswa FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all on jadwal_pelajaran" ON jadwal_pelajaran;
+CREATE POLICY "Allow all on jadwal_pelajaran" ON jadwal_pelajaran FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all on absensi" ON absensi;
+CREATE POLICY "Allow all on absensi" ON absensi FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all on audit_logs" ON audit_logs;
+CREATE POLICY "Allow all on audit_logs" ON audit_logs FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
 -- 10. BERIKAN HAK AKSES PENUH (GRANT) UNTUK PERAN ANON & AUTHENTICATED
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, postgres, service_role;

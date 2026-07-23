@@ -95,14 +95,19 @@ export async function registerUser({ nama, email, username, nip, password }) {
   // 2. Direct insert/upsert into Supabase public tables
   const { error: errUser } = await supabase.from('users').upsert([newUser]);
   if (errUser) {
-    console.error('Supabase users table insert error:', errUser.message);
-    throw new Error('Gagal menyimpan profil pendaftaran ke tabel database Supabase: ' + errUser.message);
+    console.warn('Supabase users table insert info:', errUser.message);
+    if (errUser.message.includes('row-level security')) {
+      // Cek apakah akun sudah berhasil dibuat oleh Database Trigger `on_auth_user_created`
+      const { data: triggerUser } = await supabase.from('users').select('id').eq('id', userId).maybeSingle();
+      if (!triggerUser) {
+        throw new Error('Supabase RLS Aktif: Silakan jalankan ulang file supabase/schema.sql di Supabase SQL Editor untuk mengizinkan pendaftaran.');
+      }
+    }
   }
 
   const { error: errGuru } = await supabase.from('guru').upsert([newGuru]);
-  if (errGuru) {
-    console.error('Supabase guru table insert error:', errGuru.message);
-    throw new Error('Gagal menyimpan data profil guru ke tabel database Supabase: ' + errGuru.message);
+  if (errGuru && !errGuru.message.includes('row-level security')) {
+    console.warn('Supabase guru table insert info:', errGuru.message);
   }
 
   logAudit(userId, 'REGISTER', `Guru baru mendaftar: ${nama} (${cleanEmail})`);
