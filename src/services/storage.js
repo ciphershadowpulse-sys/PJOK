@@ -435,6 +435,21 @@ export async function addOrUpdateSiswa(siswaData) {
   throw new Error('Supabase tidak terhubung.');
 }
 
+export async function addOrUpdateSiswaBatch(siswaArray) {
+  if (isSupabaseConfigured && navigator.onLine) {
+    const payload = siswaArray.map(s => {
+      const p = { ...s, qr_code: s.qr_code || `QR-${s.nis}` };
+      if (!p.id) delete p.id;
+      return p;
+    });
+
+    const { data, error } = await supabase.from('siswa').upsert(payload, { onConflict: 'nis' }).select('*');
+    if (error) throw error;
+    return data;
+  }
+  throw new Error('Supabase tidak terhubung.');
+}
+
 export async function addOrUpdateJadwal(jadwalData) {
   if (isSupabaseConfigured && navigator.onLine) {
     const payload = { ...jadwalData };

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Users, GraduationCap, Calendar, Clock, ShieldCheck, Plus, Trash2, Edit, Save, X, Search, RefreshCw } from 'lucide-react';
-import { getAllUsers, getAllGuru, getAllKelas, getAllSiswa, getAllJadwal, getAuditLogs, addOrUpdateSiswa, addOrUpdateJadwal, deleteJadwal, deleteSiswa } from '../services/storage';
+import { Users, GraduationCap, Calendar, Clock, ShieldCheck, Plus, Trash2, Edit, Save, X, Search, RefreshCw, Download, FileSpreadsheet, Upload, CheckCircle2 } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { getAllUsers, getAllGuru, getAllKelas, getAllSiswa, getAllJadwal, getAuditLogs, addOrUpdateSiswa, addOrUpdateSiswaBatch, addOrUpdateJadwal, deleteJadwal, deleteSiswa } from '../services/storage';
 
 export default function AdminDashboard({ user }) {
   const [activeTab, setActiveTab] = useState('jadwal'); // 'jadwal', 'siswa', 'guru', 'logs'
@@ -107,6 +108,81 @@ export default function AdminDashboard({ user }) {
         alert('Gagal menghapus siswa: ' + err.message);
       }
     }
+  };
+
+  const fileInputRef = React.useRef(null);
+  const [importStatusMsg, setImportStatusMsg] = useState('');
+
+  // Download Excel Template for Importing Students
+  const downloadSiswaTemplate = () => {
+    const templateData = [
+      { 'NIS': '1013', 'Nama Siswa': 'Ahmad Zaky Pratama', 'Nama Kelas': '5A', 'Jenis Kelamin (L/P)': 'L' },
+      { 'NIS': '1014', 'Nama Siswa': 'Nabila Putri Setiawan', 'Nama Kelas': '5B', 'Jenis Kelamin (L/P)': 'P' }
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Template Siswa');
+    XLSX.writeFile(workbook, 'Template_Import_Siswa_PJOK.xlsx');
+  };
+
+  // Handle Excel File Upload & Parse
+  const handleImportSiswaExcel = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        setLoading(true);
+        setImportStatusMsg('');
+        const bstr = evt.target.result;
+        const workbook = XLSX.read(bstr, { type: 'binary' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const rawData = XLSX.utils.sheet_to_json(sheet);
+
+        if (!rawData || rawData.length === 0) {
+          throw new Error('File Excel kosong atau format tidak sesuai.');
+        }
+
+        const toImport = [];
+        for (const row of rawData) {
+          const nis = String(row['NIS'] || row['nis'] || '').trim();
+          const namaSiswa = String(row['Nama Siswa'] || row['nama_siswa'] || row['Nama'] || '').trim();
+          const namaKelas = String(row['Nama Kelas'] || row['nama_kelas'] || row['Kelas'] || '').trim().toUpperCase();
+          const genderRaw = String(row['Jenis Kelamin (L/P)'] || row['Jenis Kelamin'] || row['jenis_kelamin'] || 'L').trim().toUpperCase();
+          const gender = genderRaw.startsWith('P') ? 'P' : 'L';
+
+          if (!nis || !namaSiswa) continue;
+
+          // Find matching class ID by class name or assign first class
+          const matchedKelas = kelas.find(k => k.nama_kelas.toUpperCase() === namaKelas) || kelas[0];
+
+          toImport.push({
+            nis,
+            nama_siswa: namaSiswa,
+            kelas_id: matchedKelas?.id || null,
+            jenis_kelamin: gender,
+            qr_code: `QR-${nis}`
+          });
+        }
+
+        if (toImport.length === 0) {
+          throw new Error('Tidak ada data siswa valid yang ditemukan di file Excel.');
+        }
+
+        await addOrUpdateSiswaBatch(toImport);
+        await loadAllAdminData();
+        setImportStatusMsg(`🎉 Berhasil mengimpor ${toImport.length} data siswa dari file Excel ke database Supabase!`);
+      } catch (err) {
+        alert('Gagal mengimpor Excel: ' + err.message);
+      } finally {
+        setLoading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsBinaryString(file);
   };
 
   return (
@@ -239,18 +315,67 @@ export default function AdminDashboard({ user }) {
       {/* TAB 2: MANAJEMEN SISWA */}
       {activeTab === 'siswa' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-extrabold text-slate-900">Daftar Siswa Sekolah</h2>
-            <button
-              onClick={() => {
-                setSiswaForm({ id: '', nis: '', nama_siswa: '', kelas_id: kelas[0]?.id || '', jenis_kelamin: 'L' });
-                setShowSiswaModal(true);
-              }}
-              className="py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-sky-600/30 flex items-center space-x-1.5 transition-all"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Tambah Siswa</span>
-            </button>
+
+          {/* Import Status Toast */}
+          {importStatusMsg && (
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 flex items-center justify-between text-emerald-700 text-xs font-bold animate-fade-in">
+              <div className="flex items-center space-x-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                <span>{importStatusMsg}</span>
+              </div>
+              <button onClick={() => setImportStatusMsg('')} className="text-emerald-800 hover:text-emerald-950">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImportSiswaExcel}
+            accept=".xlsx, .xls"
+            className="hidden"
+          />
+
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-base font-extrabold text-slate-900">Daftar Siswa Sekolah</h2>
+              <p className="text-xs text-slate-500 font-medium">Kelola data master siswa atau impor massal via file Excel</p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Button Unduh Template Excel */}
+              <button
+                onClick={downloadSiswaTemplate}
+                className="py-2.5 px-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 font-extrabold text-xs rounded-2xl shadow-sm flex items-center space-x-1.5 transition-all cursor-pointer"
+                title="Unduh Format Contoh File Excel"
+              >
+                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                <span>Unduh Template Excel</span>
+              </button>
+
+              {/* Button Impor Excel Siswa */}
+              <button
+                onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                className="py-2.5 px-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-emerald-600/30 flex items-center space-x-1.5 transition-all cursor-pointer"
+                title="Unggah dan Impor File Excel Siswa"
+              >
+                <Upload className="w-4 h-4" />
+                <span>Impor Excel Siswa</span>
+              </button>
+
+              {/* Button Manual Tambah Siswa */}
+              <button
+                onClick={() => {
+                  setSiswaForm({ id: '', nis: '', nama_siswa: '', kelas_id: kelas[0]?.id || '', jenis_kelamin: 'L' });
+                  setShowSiswaModal(true);
+                }}
+                className="py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-sky-600/30 flex items-center space-x-1.5 transition-all cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Tambah Siswa</span>
+              </button>
+            </div>
           </div>
 
           <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
