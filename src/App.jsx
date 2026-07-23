@@ -1,24 +1,66 @@
 import React, { useState, useEffect } from 'react';
 import Navbar from './components/Navbar';
-import ScheduleTimeSimulatorModal from './components/ScheduleTimeSimulatorModal';
 import Login from './pages/Login';
 import GuruDashboard from './pages/GuruDashboard';
 import AbsensiForm from './pages/AbsensiForm';
 import RiwayatAbsensi from './pages/RiwayatAbsensi';
 import AdminDashboard from './pages/AdminDashboard';
 import LaporanExport from './pages/LaporanExport';
-import { syncPendingData } from './services/storage';
+import { logoutUser } from './services/storage';
+import { supabase, isSupabaseConfigured } from './lib/supabase';
 
 export default function App() {
   const [user, setUser] = useState(null);
-  const [currentView, setCurrentView] = useState('login'); // 'login', 'dashboard', 'absensi_form', 'riwayat', 'kelola', 'laporan'
+  const [currentView, setCurrentView] = useState('login'); // Protected routes: 'dashboard', 'absensi_form', 'riwayat', 'kelola', 'laporan'
   const [selectedJadwal, setSelectedJadwal] = useState(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
-
-  // Time & Simulator state
-  const [simulatedTime, setSimulatedTime] = useState(null); // { hari: 'Senin', jam: '07:15' }
-  const [showSimulatorModal, setShowSimulatorModal] = useState(false);
   const [realtimeClock, setRealtimeClock] = useState(new Date());
+
+  // 1. Restore & Listen to Supabase Auth Session
+  useEffect(() => {
+    async function initAuthSession() {
+      if (!isSupabaseConfigured) return;
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user) {
+          const userObj = {
+            id: session.user.id,
+            nama: session.user.user_metadata?.nama || session.user.email,
+            username: session.user.user_metadata?.username || session.user.email.split('@')[0],
+            email: session.user.email,
+            role: 'guru'
+          };
+          setUser(userObj);
+          setCurrentView('dashboard');
+        }
+      } catch (err) {
+        console.warn('Error fetching Supabase auth session:', err);
+      }
+
+      // Listen for auth state changes (sign in, sign out, token refresh)
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          const userObj = {
+            id: session.user.id,
+            nama: session.user.user_metadata?.nama || session.user.email,
+            username: session.user.user_metadata?.username || session.user.email.split('@')[0],
+            email: session.user.email,
+            role: 'guru'
+          };
+          setUser(userObj);
+          setCurrentView('dashboard');
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setCurrentView('login');
+        }
+      });
+
+      return () => subscription?.unsubscribe();
+    }
+
+    initAuthSession();
+  }, []);
 
   // Realtime Clock Ticker
   useEffect(() => {
@@ -30,10 +72,7 @@ export default function App() {
 
   // Online / Offline listener
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOffline(false);
-      syncPendingData();
-    };
+    const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
 
     window.addEventListener('online', handleOnline);
@@ -45,17 +84,8 @@ export default function App() {
     };
   }, []);
 
-  // Calculate current active day & time (Simulated vs Realtime)
+  // Calculate strict real-time active day & time
   const getActiveTime = () => {
-    if (simulatedTime) {
-      return {
-        hari: simulatedTime.hari,
-        jam: simulatedTime.jam,
-        tanggalStr: new Date().toISOString().split('T')[0],
-        tanggalFormatted: `${simulatedTime.hari}, ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`
-      };
-    }
-
     const DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
     const currentDay = DAYS[realtimeClock.getDay()];
     const hours = String(realtimeClock.getHours()).padStart(2, '0');
@@ -77,7 +107,8 @@ export default function App() {
     setCurrentView('dashboard');
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await logoutUser();
     setUser(null);
     setSelectedJadwal(null);
     setCurrentView('login');
@@ -88,35 +119,41 @@ export default function App() {
     setCurrentView('absensi_form');
   };
 
+  // 🔒 ROUTE GUARD: Jika tidak ada user/sesi aktif, paksa ke tampilan Login!
+  const isDashboardView = ['dashboard', 'absensi_form', 'riwayat', 'kelola', 'laporan'].includes(currentView);
+  const activeViewToRender = (!user && isDashboardView) ? 'login' : currentView;
+
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-['Plus_Jakarta_Sans',sans-serif]">
       
       {/* Top Navbar */}
       <Navbar
         user={user}
-        currentView={currentView}
-        onNavigate={(view) => setCurrentView(view)}
+        currentView={activeViewToRender}
+        onNavigate={(view) => {
+          if (user) setCurrentView(view);
+          else setCurrentView('login');
+        }}
         onLogout={handleLogout}
         isOffline={isOffline}
-        simulatedTime={simulatedTime}
-        onOpenSimulator={() => setShowSimulatorModal(true)}
       />
 
       {/* Main Content Area */}
       <main className="flex-1 pb-10">
-        {!user && <Login onLoginSuccess={handleLoginSuccess} />}
+        {!user || activeViewToRender === 'login' ? (
+          <Login onLoginSuccess={handleLoginSuccess} />
+        ) : null}
 
-        {user && currentView === 'dashboard' && (
+        {user && activeViewToRender === 'dashboard' && (
           <GuruDashboard
             user={user}
             currentTime={activeTime}
             onSelectJadwalForAbsensi={handleSelectJadwalForAbsensi}
             onNavigate={(view) => setCurrentView(view)}
-            onOpenSimulator={() => setShowSimulatorModal(true)}
           />
         )}
 
-        {user && currentView === 'absensi_form' && selectedJadwal && (
+        {user && activeViewToRender === 'absensi_form' && selectedJadwal && (
           <AbsensiForm
             jadwal={selectedJadwal}
             currentTime={activeTime}
@@ -125,34 +162,25 @@ export default function App() {
           />
         )}
 
-        {user && currentView === 'riwayat' && (
+        {user && activeViewToRender === 'riwayat' && (
           <RiwayatAbsensi
             onBack={() => setCurrentView('dashboard')}
             onNavigateToLaporan={() => setCurrentView('laporan')}
           />
         )}
 
-        {user && currentView === 'kelola' && (
+        {user && activeViewToRender === 'kelola' && (
           <AdminDashboard
             user={user}
           />
         )}
 
-        {user && currentView === 'laporan' && (
+        {user && activeViewToRender === 'laporan' && (
           <LaporanExport
             onBack={() => setCurrentView('dashboard')}
           />
         )}
       </main>
-
-      {/* Time Simulator Modal */}
-      <ScheduleTimeSimulatorModal
-        isOpen={showSimulatorModal}
-        onClose={() => setShowSimulatorModal(false)}
-        currentSim={simulatedTime}
-        onApply={(sim) => setSimulatedTime(sim)}
-        onReset={() => setSimulatedTime(null)}
-      />
 
     </div>
   );

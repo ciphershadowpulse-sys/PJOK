@@ -104,16 +104,8 @@ export default function GuruDashboard({ user, currentTime, onSelectJadwalForAbse
 
         <div className="flex flex-wrap items-center gap-2">
           <button
-            onClick={onOpenSimulator}
-            className="flex items-center space-x-1.5 text-xs font-bold bg-amber-500/10 text-amber-700 border border-amber-300 hover:bg-amber-500/20 px-3 py-2 rounded-xl transition-all"
-          >
-            <Sliders className="w-4 h-4" />
-            <span>Simulasi Jam</span>
-          </button>
-
-          <button
             onClick={() => onNavigate('kelola')}
-            className="flex items-center space-x-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-3 py-2 rounded-xl transition-all"
+            className="flex items-center space-x-1.5 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 px-3.5 py-2 rounded-xl transition-all"
           >
             <FileText className="w-4 h-4 text-amber-600" />
             <span>Kelola Data</span>

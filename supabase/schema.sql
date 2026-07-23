@@ -2,10 +2,29 @@
 -- SUPABASE POSTGRESQL DDL
 
 -- 1. ENUM TYPES
-CREATE TYPE user_role AS ENUM ('guru');
-CREATE TYPE jenis_kelamin_enum AS ENUM ('L', 'P');
-CREATE TYPE status_absensi_enum AS ENUM ('Hadir', 'Sakit', 'Izin', 'Alpa', 'Terlambat');
-CREATE TYPE hari_enum AS ENUM ('Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu');
+DO $$ BEGIN
+    CREATE TYPE user_role AS ENUM ('guru');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE jenis_kelamin_enum AS ENUM ('L', 'P');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE status_absensi_enum AS ENUM ('Hadir', 'Sakit', 'Izin', 'Alpa', 'Terlambat');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
+
+DO $$ BEGIN
+    CREATE TYPE hari_enum AS ENUM ('Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu');
+EXCEPTION
+    WHEN duplicate_object THEN null;
+END $$;
 
 -- 2. TABEL USERS (Profil / Pengguna System)
 CREATE TABLE IF NOT EXISTS users (
@@ -22,7 +41,7 @@ CREATE TABLE IF NOT EXISTS guru (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     nama_guru VARCHAR(150) NOT NULL,
-    nip VARCHAR(30) UNIQUE NOT NULL,
+    nip VARCHAR(50) UNIQUE NOT NULL,
     mata_pelajaran VARCHAR(50) DEFAULT 'PJOK',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -30,8 +49,8 @@ CREATE TABLE IF NOT EXISTS guru (
 -- 4. TABEL KELAS
 CREATE TABLE IF NOT EXISTS kelas (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    nama_kelas VARCHAR(50) NOT NULL, -- Contoh: '5A', '5B', '6A'
-    tingkat VARCHAR(10) NOT NULL,    -- Contoh: '5', '6'
+    nama_kelas VARCHAR(50) NOT NULL,
+    tingkat VARCHAR(10) NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -84,7 +103,59 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- SAMPLE SEED DATA UNTUK PENGUJIAN
+-- 9. HAPUS PEMBATASAN RLS (ROW LEVEL SECURITY) AGAR PENDAFTARAN BISA DISIMPAN DI TABEL
+ALTER TABLE users DISABLE ROW LEVEL SECURITY;
+ALTER TABLE guru DISABLE ROW LEVEL SECURITY;
+ALTER TABLE kelas DISABLE ROW LEVEL SECURITY;
+ALTER TABLE siswa DISABLE ROW LEVEL SECURITY;
+ALTER TABLE jadwal_pelajaran DISABLE ROW LEVEL SECURITY;
+ALTER TABLE absensi DISABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_logs DISABLE ROW LEVEL SECURITY;
+
+-- 10. BERIKAN HAK AKSES PENUH (GRANT) UNTUK PERAN ANON & AUTHENTICATED
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, postgres, service_role;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, postgres, service_role;
+GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, postgres, service_role;
+
+-- 11. AUTOMATIC TRIGGER PENDAFTARAN DARI SUPABASE AUTH KE TABEL PUBLIC USERS & GURU
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Insert ke tabel public.users
+  INSERT INTO public.users (id, nama, username, email, role)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'nama', SPLIT_PART(NEW.email, '@', 1)),
+    COALESCE(NEW.raw_user_meta_data->>'username', SPLIT_PART(NEW.email, '@', 1)),
+    NEW.email,
+    'guru'::user_role
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    nama = EXCLUDED.nama,
+    username = EXCLUDED.username,
+    email = EXCLUDED.email;
+
+  -- Insert ke tabel public.guru
+  INSERT INTO public.guru (user_id, nama_guru, nip, mata_pelajaran)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data->>'nama', SPLIT_PART(NEW.email, '@', 1)),
+    COALESCE(NULLIF(NEW.raw_user_meta_data->>'nip', ''), CONCAT('NIP-', FLOOR(EXTRACT(EPOCH FROM NOW())))),
+    'PJOK'
+  )
+  ON CONFLICT (user_id) DO NOTHING;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Pasang trigger pada tabel auth.users Supabase
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- SAMPLE SEED DATA UNTUK PENGUJIAN LOKAL
 INSERT INTO users (id, nama, username, email, role) VALUES
   ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11', 'Pak Budi Prasetyo, S.Pd', 'budi_pjok', 'budi@sekolah.sch.id', 'guru'),
   ('a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a22', 'Bu Siti Aminah, S.Pd', 'siti_pjok', 'siti@sekolah.sch.id', 'guru')

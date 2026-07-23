@@ -1,7 +1,10 @@
 import React from 'react';
-import { LogOut, Wifi, WifiOff, Clock, User, Sliders, Calendar, FileText, Database, LayoutDashboard } from 'lucide-react';
+import { LogOut, Wifi, WifiOff, Clock, User, Calendar, FileText, Database, LayoutDashboard } from 'lucide-react';
 
-export default function Navbar({ user, currentView, onNavigate, onLogout, isOffline, simulatedTime, onOpenSimulator }) {
+export default function Navbar({ user, currentView, onNavigate, onLogout, isOffline }) {
+  const clockStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  const dayStr = new Date().toLocaleDateString('id-ID', { weekday: 'long' });
+
   return (
     <header className="bg-slate-900 text-white sticky top-0 z-40 shadow-md border-b border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -73,27 +76,14 @@ export default function Navbar({ user, currentView, onNavigate, onLogout, isOffl
             </nav>
           )}
 
-          {/* Time & Network Status */}
-          <div className="hidden lg:flex items-center space-x-3 text-xs bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700">
+          {/* Realtime Clock & Network Status */}
+          <div className="hidden lg:flex items-center space-x-3 text-xs bg-slate-800/80 px-3.5 py-1.5 rounded-lg border border-slate-700">
             <div className="flex items-center space-x-1.5 text-slate-300">
               <Clock className="w-4 h-4 text-emerald-400" />
-              <span className="font-semibold text-slate-200">
-                {simulatedTime ? `${simulatedTime.hari}, ${simulatedTime.jam}` : 'Waktu Realtime'}
+              <span className="font-bold text-slate-200">
+                {dayStr}, {clockStr} WIB
               </span>
-              {simulatedTime && (
-                <span className="bg-amber-500/20 text-amber-300 text-[10px] px-1.5 py-0.5 rounded font-bold">
-                  SIMULASI
-                </span>
-              )}
             </div>
-
-            <button 
-              onClick={onOpenSimulator}
-              className="text-slate-400 hover:text-white p-1 transition-colors"
-              title="Atur Simulasi Jam/Hari"
-            >
-              <Sliders className="w-3.5 h-3.5" />
-            </button>
 
             <div className="h-4 w-px bg-slate-700"></div>
 
@@ -125,15 +115,6 @@ export default function Navbar({ user, currentView, onNavigate, onLogout, isOffl
                   </p>
                 </div>
               </div>
-
-              {/* Simulation Quick Button on Mobile */}
-              <button 
-                onClick={onOpenSimulator}
-                className="lg:hidden p-2 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-lg border border-slate-700"
-                title="Atur Simulasi Waktu"
-              >
-                <Sliders className="w-4 h-4" />
-              </button>
 
               <button
                 onClick={onLogout}
