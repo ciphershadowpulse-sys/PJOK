@@ -163,6 +163,17 @@ export async function loginUser(identifier, password) {
   throw new Error('Akun belum terdaftar di database Supabase. Silakan klik tab "Daftar Guru Baru" terlebih dahulu.');
 }
 
+// LOGOUT SUPABASE AUTH SESSION
+export async function logoutUser() {
+  if (isSupabaseConfigured && navigator.onLine) {
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.warn('Supabase auth signOut note:', e);
+    }
+  }
+}
+
 // LOGIN WITH GOOGLE (GMAIL OAUTH)
 export async function loginWithGoogle() {
   if (!isSupabaseConfigured) {
