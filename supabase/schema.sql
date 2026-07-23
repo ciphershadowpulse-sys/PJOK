@@ -1,42 +1,17 @@
 -- SCHEMA DATABASE UNTUK APLIKASI ABSENSI GURU OLAHRAGA (PJOK)
--- POSTGRESQL DDL (MENGGUNAKAN TIPE TEXT UNTUK SELURUH KOLOM STRING & ID)
+-- POSTGRESQL DDL (FLUID TEXT SCHEMA - BEBAS DI-EDIT DI SUPABASE TABLE EDITOR)
 
--- 1. ENUM TYPES
-DO $$ BEGIN
-    CREATE TYPE user_role AS ENUM ('guru');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
-
-DO $$ BEGIN
-    CREATE TYPE jenis_kelamin_enum AS ENUM ('L', 'P');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
-
-DO $$ BEGIN
-    CREATE TYPE status_absensi_enum AS ENUM ('Hadir', 'Sakit', 'Izin', 'Alpa', 'Terlambat');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
-
-DO $$ BEGIN
-    CREATE TYPE hari_enum AS ENUM ('Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu');
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
-
--- 2. TABEL USERS (Profil / Pengguna System)
+-- 1. TABEL USERS (Profil / Pengguna System)
 CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     nama TEXT NOT NULL,
     username TEXT UNIQUE NOT NULL,
     email TEXT UNIQUE,
-    role user_role NOT NULL DEFAULT 'guru',
+    role TEXT NOT NULL DEFAULT 'guru',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. TABEL GURU
+-- 2. TABEL GURU
 CREATE TABLE IF NOT EXISTS guru (
     id TEXT PRIMARY KEY,
     user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
@@ -46,7 +21,7 @@ CREATE TABLE IF NOT EXISTS guru (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 4. TABEL KELAS
+-- 3. TABEL KELAS
 CREATE TABLE IF NOT EXISTS kelas (
     id TEXT PRIMARY KEY,
     nama_kelas TEXT NOT NULL,
@@ -54,37 +29,37 @@ CREATE TABLE IF NOT EXISTS kelas (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 5. TABEL SISWA
+-- 4. TABEL SISWA
 CREATE TABLE IF NOT EXISTS siswa (
     id TEXT PRIMARY KEY,
     nis TEXT UNIQUE NOT NULL,
     nama_siswa TEXT NOT NULL,
     kelas_id TEXT REFERENCES kelas(id) ON DELETE CASCADE,
-    jenis_kelamin jenis_kelamin_enum NOT NULL DEFAULT 'L',
+    jenis_kelamin TEXT NOT NULL DEFAULT 'L',
     qr_code TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 6. TABEL JADWAL PELAJARAN
+-- 5. TABEL JADWAL PELAJARAN
 CREATE TABLE IF NOT EXISTS jadwal_pelajaran (
     id TEXT PRIMARY KEY,
     guru_id TEXT REFERENCES guru(id) ON DELETE CASCADE,
     kelas_id TEXT REFERENCES kelas(id) ON DELETE CASCADE,
-    hari hari_enum NOT NULL,
-    jam_mulai TIME NOT NULL,
-    jam_selesai TIME NOT NULL,
+    hari TEXT NOT NULL DEFAULT 'Senin',
+    jam_mulai TIME NOT NULL DEFAULT '07:00:00',
+    jam_selesai TIME NOT NULL DEFAULT '08:30:00',
     mata_pelajaran TEXT DEFAULT 'PJOK',
     lokasi TEXT DEFAULT 'Lap. Utama Sekolah',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 7. TABEL ABSENSI
+-- 6. TABEL ABSENSI
 CREATE TABLE IF NOT EXISTS absensi (
     id TEXT PRIMARY KEY,
     siswa_id TEXT REFERENCES siswa(id) ON DELETE CASCADE,
     jadwal_id TEXT REFERENCES jadwal_pelajaran(id) ON DELETE CASCADE,
     tanggal DATE NOT NULL DEFAULT CURRENT_DATE,
-    status status_absensi_enum NOT NULL DEFAULT 'Hadir',
+    status TEXT NOT NULL DEFAULT 'Hadir',
     keterangan TEXT,
     foto_kegiatan TEXT,
     gps_lat NUMERIC(10, 8),
@@ -94,7 +69,7 @@ CREATE TABLE IF NOT EXISTS absensi (
     CONSTRAINT unique_siswa_jadwal_tanggal UNIQUE (siswa_id, jadwal_id, tanggal)
 );
 
--- 8. TABEL AUDIT LOGS
+-- 7. TABEL AUDIT LOGS
 CREATE TABLE IF NOT EXISTS audit_logs (
     id TEXT PRIMARY KEY,
     user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
@@ -103,7 +78,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 9. HAPUS PEMBATASAN RLS (ROW LEVEL SECURITY) DAN BUAT KEBIJAKAN IZIN PERMISSIVE
+-- 8. PEMBATASAN RLS (ROW LEVEL SECURITY) DAN KEBIJAKAN IZIN PERMISSIVE
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE guru DISABLE ROW LEVEL SECURITY;
 ALTER TABLE kelas DISABLE ROW LEVEL SECURITY;
@@ -141,12 +116,12 @@ CREATE POLICY "Allow all on absensi" ON absensi FOR ALL TO anon, authenticated U
 DROP POLICY IF EXISTS "Allow all on audit_logs" ON audit_logs;
 CREATE POLICY "Allow all on audit_logs" ON audit_logs FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
--- 10. BERIKAN HAK AKSES PENUH (GRANT) UNTUK PERAN ANON & AUTHENTICATED
+-- 9. BERIKAN HAK AKSES PENUH (GRANT) UNTUK PERAN ANON & AUTHENTICATED
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, postgres, service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, postgres, service_role;
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, postgres, service_role;
 
--- 11. AUTOMATIC TRIGGER PENDAFTARAN DARI SUPABASE AUTH KE TABEL PUBLIC USERS & GURU
+-- 10. AUTOMATIC TRIGGER PENDAFTARAN DARI SUPABASE AUTH KE TABEL PUBLIC USERS & GURU
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -157,7 +132,7 @@ BEGIN
     COALESCE(NEW.raw_user_meta_data->>'nama', SPLIT_PART(NEW.email, '@', 1)),
     COALESCE(NEW.raw_user_meta_data->>'username', SPLIT_PART(NEW.email, '@', 1)),
     NEW.email,
-    'guru'::user_role
+    'guru'
   )
   ON CONFLICT (id) DO UPDATE SET
     nama = EXCLUDED.nama,
