@@ -4,7 +4,8 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 export async function logAudit(userId, aksi, detail) {
   if (isSupabaseConfigured && navigator.onLine) {
     try {
-      await supabase.from('audit_logs').insert([{ user_id: userId, aksi, detail }]);
+      const logId = `log_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+      await supabase.from('audit_logs').insert([{ id: logId, user_id: userId, aksi, detail }]);
     } catch (e) {
       console.warn('Audit log insert note:', e);
     }
@@ -418,18 +419,6 @@ export async function getAuditLogs() {
     if (data) return data;
   }
   return [];
-}
-
-// AUDIT LOG SERVICE
-export async function logAudit(userId, aksi, detail) {
-  if (isSupabaseConfigured && navigator.onLine) {
-    try {
-      const logId = `log_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-      await supabase.from('audit_logs').insert([{ id: logId, user_id: userId, aksi, detail }]);
-    } catch (e) {
-      console.warn('Audit log insert note:', e);
-    }
-  }
 }
 
 // MUTATIONS (SUPABASE DIRECT)
