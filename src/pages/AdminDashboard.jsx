@@ -27,15 +27,23 @@ export default function AdminDashboard({ user }) {
     id: '', nis: '', nama_siswa: '', kelas_id: '', jenis_kelamin: 'L'
   });
 
-  const loadAllAdminData = () => {
+  const loadAllAdminData = async () => {
     setLoading(true);
     try {
-      setUsers(getAllUsers());
-      setGuru(getAllGuru());
-      setKelas(getAllKelas());
-      setSiswa(getAllSiswa());
-      setJadwal(getAllJadwal());
-      setLogs(getAuditLogs());
+      const [uList, gList, kList, sList, jList, lList] = await Promise.all([
+        getAllUsers(),
+        getAllGuru(),
+        getAllKelas(),
+        getAllSiswa(),
+        getAllJadwal(),
+        getAuditLogs()
+      ]);
+      setUsers(uList || []);
+      setGuru(gList || []);
+      setKelas(kList || []);
+      setSiswa(sList || []);
+      setJadwal(jList || []);
+      setLogs(lList || []);
     } catch (e) {
       console.error('Admin data load error:', e);
     } finally {
@@ -48,40 +56,56 @@ export default function AdminDashboard({ user }) {
   }, []);
 
   // Submit Jadwal Form
-  const handleSaveJadwal = (e) => {
+  const handleSaveJadwal = async (e) => {
     e.preventDefault();
     if (!jadwalForm.guru_id || !jadwalForm.kelas_id) {
       alert('Pilih Guru dan Kelas terlebih dahulu.');
       return;
     }
-    addOrUpdateJadwal(jadwalForm);
-    setShowJadwalModal(false);
-    loadAllAdminData();
+    try {
+      await addOrUpdateJadwal(jadwalForm);
+      setShowJadwalModal(false);
+      await loadAllAdminData();
+    } catch (err) {
+      alert('Gagal menyimpan jadwal: ' + err.message);
+    }
   };
 
   // Submit Siswa Form
-  const handleSaveSiswa = (e) => {
+  const handleSaveSiswa = async (e) => {
     e.preventDefault();
     if (!siswaForm.nis || !siswaForm.nama_siswa || !siswaForm.kelas_id) {
       alert('Lengkapi NIS, Nama Siswa, dan Kelas.');
       return;
     }
-    addOrUpdateSiswa(siswaForm);
-    setShowSiswaModal(false);
-    loadAllAdminData();
-  };
-
-  const handleDeleteJadwal = (id) => {
-    if (confirm('Apakah Anda yakin ingin menghapus jadwal ini?')) {
-      deleteJadwal(id);
-      loadAllAdminData();
+    try {
+      await addOrUpdateSiswa(siswaForm);
+      setShowSiswaModal(false);
+      await loadAllAdminData();
+    } catch (err) {
+      alert('Gagal menyimpan siswa: ' + err.message);
     }
   };
 
-  const handleDeleteSiswa = (id) => {
+  const handleDeleteJadwal = async (id) => {
+    if (confirm('Apakah Anda yakin ingin menghapus jadwal ini?')) {
+      try {
+        await deleteJadwal(id);
+        await loadAllAdminData();
+      } catch (err) {
+        alert('Gagal menghapus jadwal: ' + err.message);
+      }
+    }
+  };
+
+  const handleDeleteSiswa = async (id) => {
     if (confirm('Apakah Anda yakin ingin menghapus siswa ini?')) {
-      deleteSiswa(id);
-      loadAllAdminData();
+      try {
+        await deleteSiswa(id);
+        await loadAllAdminData();
+      } catch (err) {
+        alert('Gagal menghapus siswa: ' + err.message);
+      }
     }
   };
 

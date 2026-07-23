@@ -15,18 +15,20 @@ export default function RiwayatAbsensi({ onBack, onNavigateToLaporan }) {
   const [filterStatus, setFilterStatus] = useState('');
 
   useEffect(() => {
-    function loadData() {
+    async function loadData() {
       setLoading(true);
       try {
-        const records = getAllAbsensi();
-        const students = getAllSiswa();
-        const classes = getAllKelas();
-        const schedules = getAllJadwal();
+        const [records, students, classes, schedules] = await Promise.all([
+          getAllAbsensi(),
+          getAllSiswa(),
+          getAllKelas(),
+          getAllJadwal()
+        ]);
 
-        setAbsensiList(records);
-        setSiswaList(students);
-        setKelasList(classes);
-        setJadwalList(schedules);
+        setAbsensiList(records || []);
+        setSiswaList(students || []);
+        setKelasList(classes || []);
+        setJadwalList(schedules || []);
       } catch (e) {
         console.error('Error loading history:', e);
       } finally {

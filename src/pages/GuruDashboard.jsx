@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, Play, CheckCircle2, AlertCircle, RefreshCw, Sliders, ChevronRight, History, FileText } from 'lucide-react';
+import { Calendar, Clock, MapPin, Play, CheckCircle2, AlertCircle, RefreshCw, ChevronRight, History, FileText } from 'lucide-react';
 import { getGuruByUserId, getJadwalGuru, checkScheduleStatus, getAbsensiRecord } from '../services/storage';
 
-export default function GuruDashboard({ user, currentTime, onSelectJadwalForAbsensi, onNavigate, onOpenSimulator }) {
+export default function GuruDashboard({ user, currentTime, onSelectJadwalForAbsensi, onNavigate }) {
   const [guruData, setGuruData] = useState(null);
   const [jadwals, setJadwals] = useState([]);
   const [loading, setLoading] = useState(true);

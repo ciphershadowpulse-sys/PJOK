@@ -18,11 +18,25 @@ export default function LaporanExport({ onBack }) {
   const [selectedTanggal, setSelectedTanggal] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
-    setAbsensi(getAllAbsensi());
-    setSiswa(getAllSiswa());
-    setKelas(getAllKelas());
-    setGuru(getAllGuru());
-    setJadwal(getAllJadwal());
+    async function loadReportData() {
+      try {
+        const [aList, sList, kList, gList, jList] = await Promise.all([
+          getAllAbsensi(),
+          getAllSiswa(),
+          getAllKelas(),
+          getAllGuru(),
+          getAllJadwal()
+        ]);
+        setAbsensi(aList || []);
+        setSiswa(sList || []);
+        setKelas(kList || []);
+        setGuru(gList || []);
+        setJadwal(jList || []);
+      } catch (e) {
+        console.error('Error loading report data:', e);
+      }
+    }
+    loadReportData();
   }, []);
 
   // Enriched report data
