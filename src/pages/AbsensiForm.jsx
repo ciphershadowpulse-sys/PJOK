@@ -516,45 +516,50 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
       </div>
 
       {/* Title Header & View Mode Toggles for Students List */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
-        <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center space-x-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-          <span>Daftar Siswa Ter-Scan ({scannedSiswaCount} dari {siswaList.length})</span>
-        </h3>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-3xl border border-slate-200 shadow-sm">
+        <div>
+          <h3 className="text-sm font-black text-slate-900 flex items-center space-x-2">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+            <span>Progress Absensi Lapangan</span>
+          </h3>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
+            Selesai Scan: <span className="font-extrabold text-emerald-700">{scannedSiswaCount} Siswa</span> | Sisa Belum Scan: <span className="font-extrabold text-amber-700">{unscannedSiswaCount} Siswa</span> | Total: <span className="font-extrabold text-slate-900">{siswaList.length} Siswa</span>
+          </p>
+        </div>
 
-        <div className="flex items-center space-x-1 bg-slate-200/70 p-1 rounded-2xl text-[11px] font-extrabold">
+        <div className="flex items-center space-x-1 bg-slate-100 p-1.5 rounded-2xl text-[11px] font-extrabold">
           <button
             type="button"
             onClick={() => setViewMode('scanned_only')}
-            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+            className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 ${
               viewMode === 'scanned_only'
-                ? 'bg-slate-900 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
           >
-            Selesai Scan ({scannedSiswaCount})
+            <span>✓ Selesai Scan ({scannedSiswaCount})</span>
           </button>
           <button
             type="button"
             onClick={() => setViewMode('unscanned')}
-            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+            className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 ${
               viewMode === 'unscanned'
-                ? 'bg-slate-900 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
           >
-            Belum Scan ({unscannedSiswaCount})
+            <span>⏳ Belum Scan ({unscannedSiswaCount})</span>
           </button>
           <button
             type="button"
             onClick={() => setViewMode('all')}
-            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+            className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer ${
               viewMode === 'all'
                 ? 'bg-slate-900 text-white shadow-sm'
-                : 'text-slate-600 hover:text-slate-900'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
             }`}
           >
-            Semua Siswa ({siswaList.length})
+            <span>Semua ({siswaList.length})</span>
           </button>
         </div>
       </div>
@@ -567,23 +572,67 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
         </div>
       ) : filteredSiswa.length === 0 ? (
         <div className="bg-white p-10 rounded-3xl text-center border-2 border-dashed border-slate-200 space-y-3">
-          <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto border border-emerald-200">
-            <QrCode className="w-8 h-8" />
-          </div>
-          <h3 className="text-base font-extrabold text-slate-800">
-            Belum Ada Siswa Di-Scan
-          </h3>
-          <p className="text-xs text-slate-500 max-w-sm mx-auto font-medium">
-            Silakan scan QR Code atau NIS siswa. Nama dan keterangan siswa yang sudah di-scan akan otomatis muncul di bawah ini.
-          </p>
-          <button
-            type="button"
-            onClick={() => setShowQrModal(true)}
-            className="mt-2 inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-5 py-3 rounded-2xl shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
-          >
-            <QrCode className="w-4 h-4" />
-            <span>Buka Kamera Scan QR Code</span>
-          </button>
+          {viewMode === 'scanned_only' ? (
+            <>
+              <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto border border-amber-200">
+                <QrCode className="w-8 h-8" />
+              </div>
+              <h3 className="text-base font-extrabold text-slate-800">
+                Belum Ada Siswa Selesai Di-Scan (0 dari {siswaList.length} Siswa)
+              </h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto font-medium">
+                Masih ada {unscannedSiswaCount} siswa yang belum di-scan. Silakan buka kamera untuk scan QR Code atau beralih ke tab "Belum Scan".
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowQrModal(true)}
+                  className="inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-5 py-3 rounded-2xl shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+                >
+                  <QrCode className="w-4 h-4" />
+                  <span>Buka Kamera Scan QR Code</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('unscanned')}
+                  className="inline-flex items-center space-x-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs px-5 py-3 rounded-2xl shadow-md transition-all cursor-pointer"
+                >
+                  <span>Lihat {unscannedSiswaCount} Siswa Belum Scan</span>
+                </button>
+              </div>
+            </>
+          ) : viewMode === 'unscanned' ? (
+            <>
+              <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto border border-emerald-200">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+              <h3 className="text-base font-extrabold text-slate-800">
+                🎉 Semuanya Sudah Di-Scan! ({scannedSiswaCount} dari {siswaList.length} Siswa)
+              </h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto font-medium">
+                Seluruh {siswaList.length} siswa kelas ini telah selesai di-scan dan terisi absensinya.
+              </p>
+              <button
+                type="button"
+                onClick={() => setViewMode('scanned_only')}
+                className="mt-2 inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-5 py-3 rounded-2xl shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+              >
+                <span>Lihat {scannedSiswaCount} Siswa Selesai Scan</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="w-16 h-16 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center mx-auto">
+                <Users className="w-8 h-8" />
+              </div>
+              <h3 className="text-base font-extrabold text-slate-800">
+                Tidak Ada Siswa Cocok
+              </h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto font-medium">
+                Tidak ada siswa yang sesuai dengan filter atau kata kunci pencarian Anda.
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
