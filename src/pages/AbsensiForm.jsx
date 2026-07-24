@@ -25,7 +25,7 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
   const [siswaList, setSiswaList] = useState([]);
   const [attendanceData, setAttendanceData] = useState({}); // { [siswaId]: { status, keterangan } }
   const [scannedMap, setScannedMap] = useState({}); // { [siswaId]: true }
-  const [viewMode, setViewMode] = useState('scanned_only'); // 'scanned_only' | 'unscanned' | 'all'
+  const [viewMode, setViewMode] = useState('all'); // Default 'all' agar seluruh siswa kelas jadwal PJOK langsung tampil di layar
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -48,7 +48,7 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
 
       setLoading(true);
       try {
-        let students = await getSiswaByKelas(activeJadwal.kelas_id);
+        let students = await getSiswaByKelas(activeJadwal.kelas_id, activeJadwal.nama_kelas);
         if (!students || !Array.isArray(students) || students.length === 0) {
           const { getAllSiswa } = await import('../services/storage');
           students = await getAllSiswa();

@@ -319,15 +319,32 @@ export async function getJadwalGuru(guruId) {
   return [];
 }
 
-export async function getSiswaByKelas(kelasId) {
+export async function getSiswaByKelas(kelasId, namaKelas) {
   if (isSupabaseConfigured && navigator.onLine) {
     try {
       if (kelasId) {
         const { data, error } = await supabase
           .from('siswa')
           .select('*')
-          .eq('kelas_id', kelasId);
+          .eq('kelas_id', String(kelasId).trim());
         if (data && !error && data.length > 0) return data;
+      }
+
+      if (namaKelas) {
+        const cleanNama = String(namaKelas).replace(/kelas/i, '').trim();
+        const { data: matchedKelas } = await supabase
+          .from('kelas')
+          .select('id')
+          .ilike('nama_kelas', `%${cleanNama}%`);
+
+        if (matchedKelas && matchedKelas.length > 0) {
+          const ids = matchedKelas.map(k => k.id);
+          const { data: siswaData } = await supabase
+            .from('siswa')
+            .select('*')
+            .in('kelas_id', ids);
+          if (siswaData && siswaData.length > 0) return siswaData;
+        }
       }
 
       // Fallback: Ambil seluruh data siswa agar scanner tidak pernah terblokir
