@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Camera, X, Check, QrCode, AlertCircle, RefreshCw } from 'lucide-react';
+import { Camera, X, Check, QrCode, AlertCircle, RefreshCw, Volume2 } from 'lucide-react';
 import jsQR from 'jsqr';
 
 export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
@@ -14,6 +14,41 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
   const animFrameRef = useRef(null);
   const streamRef = useRef(null);
   const lastScanTimeRef = useRef(0);
+
+  // Audio Beep Sound Effect Generator (Web Audio API)
+  const playSuccessBeep = () => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+
+      // High chime tone 1 (880Hz / A5)
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(880, ctx.currentTime);
+      gain1.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(ctx.currentTime);
+      osc1.stop(ctx.currentTime + 0.15);
+
+      // High chime tone 2 (1174.66Hz / D6)
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(1174.66, ctx.currentTime + 0.1);
+      gain2.gain.setValueAtTime(0.2, ctx.currentTime + 0.1);
+      gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(ctx.currentTime + 0.1);
+      osc2.stop(ctx.currentTime + 0.3);
+    } catch (e) {
+      console.warn('Audio play note:', e);
+    }
+  };
 
   // Stop camera stream safely
   const stopCamera = () => {
@@ -131,10 +166,16 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
       } catch (e) {}
     }
 
-    // 3. Try key-value format e.g. "NISN: 3163288603" or "NIS: 1001" or "Scan untuk Absensi: 1001"
-    const match = str.match(/(?:nisn|nis|code|id|absensi)[\s:=]+([a-zA-Z0-9-]+)/i);
-    if (match && match[1]) {
-      return match[1].trim();
+    // 3. Try key-value or pattern format e.g. "Scan untuk Absensi: 1001", "NISN: 3163288603", "QR-1001"
+    const matchKV = str.match(/(?:scan\s+untuk\s+absensi|absensi|nisn|nis|code|id)[\s:=]+([a-zA-Z0-9-]+)/i);
+    if (matchKV && matchKV[1]) {
+      return matchKV[1].trim();
+    }
+
+    // 4. Extract numeric sequence e.g. "Scan untuk Absensi 1001"
+    const digitsMatch = str.match(/\b([0-9]{3,12})\b/);
+    if (digitsMatch && digitsMatch[1]) {
+      return digitsMatch[1].trim();
     }
 
     return str;
@@ -144,12 +185,14 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
     const cleanCode = parseRawQrData(rawNisn);
     if (!cleanCode) return;
 
-    setScanNotif(`✅ Ter-scan: ${cleanCode}`);
+    // Play Audio Beep Sound Effect
+    playSuccessBeep();
 
-    // Panggil callback secara otomatis untuk simpan ke database
+    setScanNotif(`🎉 BEEP! Berhasil Scan: ${cleanCode}`);
+
+    // Call success callback
     onScanSuccess(cleanCode);
 
-    // Jeda pemberitahuan agar tidak menumpuk
     setTimeout(() => {
       setScanNotif(null);
     }, 2500);
@@ -183,25 +226,30 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden text-slate-800 relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in">
+      <div className="bg-slate-900 rounded-3xl shadow-2xl border border-slate-800 w-full max-w-md overflow-hidden text-white relative">
         
-        {/* Header Gradient */}
-        <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-5 text-white text-center relative">
+        {/* Futuristic Header Gradient */}
+        <div className="bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 border-b border-emerald-500/30 p-5 text-center relative">
           <button
             onClick={() => { stopCamera(); onClose(); }}
-            className="absolute top-4 right-4 text-white/80 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+            className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-xl transition-colors cursor-pointer bg-slate-800/60"
             title="Tutup Modal"
           >
             <X className="w-5 h-5" />
           </button>
 
-          <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2 border border-white/30">
-            <Camera className="w-6 h-6 text-white" />
+          <div className="w-14 h-14 bg-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-2 border border-emerald-500/40 shadow-lg shadow-emerald-500/20">
+            <QrCode className="w-7 h-7" />
           </div>
-          <h2 className="font-extrabold text-lg tracking-tight">Scan QR / Barcode Siswa</h2>
-          <p className="text-xs text-emerald-100 font-medium opacity-90 mt-0.5">
-            Arahkan QR/Barcode siswa ke kamera atau input NIS manual
+          <h2 className="font-black text-xl tracking-tight text-white flex items-center justify-center gap-2">
+            <span>Scan QR Code Siswa</span>
+            <span className="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1 font-bold">
+              <Volume2 className="w-3 h-3 animate-pulse" /> Suara Beep
+            </span>
+          </h2>
+          <p className="text-xs text-slate-300 font-medium opacity-90 mt-1">
+            Arahkan kamera ke QR Code Kartu Siswa atau input NIS / NISN manual
           </p>
         </div>
 
@@ -210,14 +258,14 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
           
           {/* Notification Alert Banner */}
           {scanNotif && (
-            <div className="rounded-2xl p-3.5 text-xs font-bold text-center bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-sm animate-bounce-subtle">
+            <div className="rounded-2xl p-3.5 text-xs font-black text-center bg-gradient-to-r from-emerald-600 to-teal-600 text-white border border-emerald-400 shadow-xl shadow-emerald-600/30 animate-bounce">
               {scanNotif}
             </div>
           )}
 
           {cameraError && (
-            <div className="rounded-2xl p-3 text-xs font-semibold text-center bg-rose-50 text-rose-700 border border-rose-200 flex items-center justify-center space-x-2">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <div className="rounded-2xl p-3 text-xs font-semibold text-center bg-rose-500/10 text-rose-300 border border-rose-500/30 flex items-center justify-center space-x-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400" />
               <span>{cameraError}</span>
             </div>
           )}
@@ -225,7 +273,7 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
           {/* Camera View Area */}
           {isCameraActive ? (
             <div className="space-y-3">
-              <div className="relative bg-black rounded-2xl overflow-hidden aspect-square border-2 border-emerald-500 shadow-inner flex items-center justify-center">
+              <div className="relative bg-black rounded-3xl overflow-hidden aspect-square border-2 border-emerald-500/80 shadow-2xl shadow-emerald-500/20 flex items-center justify-center">
                 <video
                   ref={videoRef}
                   autoPlay
@@ -235,17 +283,27 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
                 ></video>
                 <canvas ref={canvasRef} className="hidden" />
 
-                {/* Target overlay frame */}
-                <div className="absolute inset-8 border-2 border-dashed border-emerald-400 rounded-2xl pointer-events-none opacity-80 animate-pulse"></div>
+                {/* Target overlay reticle box */}
+                <div className="absolute inset-8 border-2 border-dashed border-emerald-400/80 rounded-2xl pointer-events-none flex flex-col justify-between p-2">
+                  <div className="flex justify-between">
+                    <span className="w-4 h-4 border-t-2 border-l-2 border-emerald-400"></span>
+                    <span className="w-4 h-4 border-t-2 border-r-2 border-emerald-400"></span>
+                  </div>
+                  <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-pulse shadow-lg shadow-emerald-400/50"></div>
+                  <div className="flex justify-between">
+                    <span className="w-4 h-4 border-b-2 border-l-2 border-emerald-400"></span>
+                    <span className="w-4 h-4 border-b-2 border-r-2 border-emerald-400"></span>
+                  </div>
+                </div>
               </div>
 
               {/* Camera Active Indicator & Controls */}
-              <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-3 flex items-center justify-between">
+              <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-3 flex items-center justify-between">
                 <div className="flex items-center space-x-2.5">
-                  <div className="w-3 h-3 rounded-full bg-emerald-600 animate-ping"></div>
+                  <div className="w-3 h-3 rounded-full bg-emerald-400 animate-ping"></div>
                   <div>
-                    <p className="text-xs font-bold text-emerald-900">Kamera Aktif ({facingMode === 'environment' ? 'Belakang' : 'Depan'})</p>
-                    <p className="text-[10px] text-emerald-700 font-medium">Arahkan ke QR siswa...</p>
+                    <p className="text-xs font-extrabold text-emerald-300">Kamera Live ({facingMode === 'environment' ? 'Belakang' : 'Depan'})</p>
+                    <p className="text-[10px] text-slate-400 font-medium">Auto-scan & Simpan ke DB...</p>
                   </div>
                 </div>
 
@@ -253,7 +311,7 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
                   <button
                     type="button"
                     onClick={toggleCameraFacing}
-                    className="p-2 bg-emerald-200 hover:bg-emerald-300 text-emerald-900 rounded-xl text-xs font-extrabold transition-all"
+                    className="p-2.5 bg-slate-700 hover:bg-slate-600 text-emerald-400 rounded-xl text-xs font-extrabold transition-all border border-slate-600"
                     title="Ganti Kamera Depan/Belakang"
                   >
                     <RefreshCw className="w-4 h-4" />
@@ -262,7 +320,7 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
                   <button
                     type="button"
                     onClick={stopCamera}
-                    className="px-3 py-1.5 bg-rose-100 hover:bg-rose-200 text-rose-800 rounded-xl text-xs font-extrabold transition-all"
+                    className="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded-xl text-xs font-extrabold border border-rose-500/30 transition-all"
                   >
                     Matikan
                   </button>
@@ -273,24 +331,24 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
             <button
               type="button"
               onClick={() => startCamera()}
-              className="w-full bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white py-3.5 px-4 rounded-2xl font-extrabold text-sm flex items-center justify-center space-x-2 shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+              className="w-full bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 active:scale-95 text-white py-4 px-4 rounded-2xl font-black text-sm flex items-center justify-center space-x-2 shadow-xl shadow-emerald-600/30 transition-all cursor-pointer"
             >
               <Camera className="w-5 h-5" />
-              <span>Buka Kamera Live</span>
+              <span>Buka Kamera Live Scanner</span>
             </button>
           )}
 
           {/* Separator */}
           <div className="flex items-center gap-2 py-1">
-            <div className="flex-1 h-px bg-slate-200"></div>
-            <span className="text-[11px] text-slate-400 font-extrabold tracking-wider">ATAU</span>
-            <div className="flex-1 h-px bg-slate-200"></div>
+            <div className="flex-1 h-px bg-slate-800"></div>
+            <span className="text-[10px] text-slate-500 font-black tracking-widest uppercase">Atau Input Manual</span>
+            <div className="flex-1 h-px bg-slate-800"></div>
           </div>
 
           {/* Manual Input NIS / NISN */}
           <div>
-            <label className="block text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-2">
-              INPUT NIS / NISN MANUAL
+            <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5">
+              INPUT NIS / NISN SISWA MANUAL
             </label>
 
             <form onSubmit={handleManualSubmit} className="flex gap-2">
@@ -299,12 +357,12 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
                 value={manualNisn}
                 onChange={(e) => setManualNisn(e.target.value)}
                 placeholder="Masukkan NIS / NISN siswa..."
-                className="flex-1 border border-slate-300 bg-slate-50 rounded-2xl px-4 py-3 text-xs font-bold text-slate-800 placeholder-slate-400 outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
+                className="flex-1 border border-slate-700 bg-slate-800 rounded-2xl px-4 py-3 text-xs font-bold text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
               />
 
               <button
                 type="submit"
-                className="bg-slate-900 hover:bg-black active:scale-95 text-white px-5 rounded-2xl font-extrabold flex items-center justify-center transition-all shadow-md cursor-pointer"
+                className="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white px-5 rounded-2xl font-black flex items-center justify-center transition-all shadow-lg shadow-emerald-600/30 cursor-pointer"
                 title="Submit Manual"
               >
                 <Check className="w-5 h-5" />
@@ -313,11 +371,11 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
           </div>
 
           {/* Done Scanning Button */}
-          <div className="pt-2">
+          <div className="pt-1">
             <button
               type="button"
               onClick={() => { stopCamera(); onClose(); }}
-              className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xs py-3 rounded-2xl border border-slate-300 transition-all cursor-pointer"
+              className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-3 rounded-2xl border border-slate-700 transition-all cursor-pointer"
             >
               SELESAI SCAN (TUTUP KAMERA)
             </button>

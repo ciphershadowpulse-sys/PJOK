@@ -144,6 +144,39 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
     );
   };
 
+  // Audio Beep Sound Effect Generator
+  const playSuccessBeep = () => {
+    try {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(880, ctx.currentTime);
+      gain1.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain1.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(ctx.currentTime);
+      osc1.stop(ctx.currentTime + 0.15);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(1174.66, ctx.currentTime + 0.1);
+      gain2.gain.setValueAtTime(0.2, ctx.currentTime + 0.1);
+      gain2.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(ctx.currentTime + 0.1);
+      osc2.stop(ctx.currentTime + 0.3);
+    } catch (e) {
+      console.warn('Audio play note:', e);
+    }
+  };
+
   // Handle QR Code or NIS/NISN scan match & Auto-save to Supabase
   const handleQrCodeScanned = async (scannedText) => {
     const cleanScanned = String(scannedText).trim().toLowerCase();
@@ -155,25 +188,31 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
       const sQr = String(s.qr_code || '').trim().toLowerCase();
       const sId = String(s.id || '').trim().toLowerCase();
 
-      // Direct exact matches
+      // 1. Direct exact matches
       if (sQr === cleanScanned || sNis === cleanScanned || sNisn === cleanScanned || sId === cleanScanned) {
         return true;
       }
 
-      // Match "qr-1001"
-      if (cleanScanned === `qr-${sNis}`) return true;
+      // 2. Format matches like "qr-1001" or "qr-3163288603"
+      if (cleanScanned === `qr-${sNis}` || cleanScanned === `qr-${sNisn}`) return true;
 
-      // Smart digit extraction match
+      // 3. Digit sequence extraction match
       if (digitsOnly && digitsOnly.length >= 3) {
         if (sNis && (sNis === digitsOnly || digitsOnly === sNis)) return true;
         if (sNisn && (sNisn === digitsOnly || digitsOnly === sNisn)) return true;
         if (sQr && sQr.includes(digitsOnly)) return true;
       }
 
+      // 4. Substring / contains match
+      if (sQr && (sQr.includes(cleanScanned) || cleanScanned.includes(sQr))) return true;
+
       return false;
     });
 
     if (found) {
+      // Play Audio Beep Sound Effect
+      playSuccessBeep();
+
       // 1. Mark as scanned & update local state
       setScannedMap(prev => ({ ...prev, [found.id]: true }));
       setAttendanceData(prev => ({
@@ -201,7 +240,7 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
           userId: user?.id || 'guru'
         });
 
-        const okMsg = `🎉 ${found.nama_siswa} (NIS: ${found.nis}) HADIR & Tersimpan ke DB!`;
+        const okMsg = `🎉 ${found.nama_siswa} (NIS: ${found.nis || '-'}) HADIR & Tersimpan ke DB!`;
         setSuccessMsg(okMsg);
         setTimeout(() => setSuccessMsg(''), 5000);
       } catch (errSave) {
