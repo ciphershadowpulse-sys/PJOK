@@ -41,8 +41,9 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
         const map = {};
         const initialScannedMap = {};
 
+        // 1. Petakan dari list siswa
         students.forEach(s => {
-          const rec = existing.find(e => e.siswa_id === s.id);
+          const rec = existing.find(e => String(e.siswa_id).trim() === String(s.id).trim());
           if (rec) {
             initialScannedMap[s.id] = true;
             map[s.id] = {
@@ -56,6 +57,34 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
             };
           }
         });
+
+        // 2. Petakan record absensi yang ada di DB meskipun tidak di kelas awal
+        if (existing && Array.isArray(existing)) {
+          for (const rec of existing) {
+            if (rec && rec.siswa_id) {
+              const recSiswaId = String(rec.siswa_id).trim();
+              initialScannedMap[recSiswaId] = true;
+              if (!map[recSiswaId]) {
+                map[recSiswaId] = {
+                  status: rec.status || 'Hadir',
+                  keterangan: rec.keterangan || ''
+                };
+              }
+              if (!students.some(s => String(s.id).trim() === recSiswaId)) {
+                try {
+                  const { getAllSiswa } = await import('../services/storage');
+                  const allStudents = await getAllSiswa();
+                  const foundStudent = allStudents.find(s => String(s.id).trim() === recSiswaId);
+                  if (foundStudent) {
+                    students.push(foundStudent);
+                  }
+                } catch (e) {}
+              }
+            }
+          }
+        }
+
+        setSiswaList([...students]);
         setAttendanceData(map);
         setScannedMap(initialScannedMap);
 
@@ -286,16 +315,22 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
       const recordsToSaveIds = Object.keys(scannedMap).filter(id => scannedMap[id]);
 
       if (recordsToSaveIds.length === 0) {
-        alert('Belum ada siswa yang di-scan atau diabsen.');
+        alert('Belum ada siswa yang di-scan atau diabsen. Silakan scan QR Code siswa terlebih dahulu.');
         setSaving(false);
         return;
       }
 
-      const records = recordsToSaveIds.map(siswaId => ({
-        siswa_id: siswaId,
-        status: attendanceData[siswaId]?.status || 'Hadir',
-        keterangan: attendanceData[siswaId]?.keterangan || ''
-      }));
+      const records = recordsToSaveIds.map(siswaId => {
+        const s = siswaList.find(item => String(item.id).trim() === String(siswaId).trim()) || {};
+        return {
+          siswa_id: siswaId,
+          nis: s.nis || null,
+          nisn: s.nisn || null,
+          nama_siswa: s.nama_siswa || null,
+          status: attendanceData[siswaId]?.status || 'Hadir',
+          keterangan: attendanceData[siswaId]?.keterangan || ''
+        };
+      });
 
       await saveAbsensiBatch({
         jadwalId: jadwal.id,
@@ -303,13 +338,14 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
         records,
         photoData,
         gpsLocation,
-        userId: user.id
+        userId: user?.id || 'guru'
       });
 
-      setSuccessMsg(`Berhasil menyimpan ${records.length} data absensi siswa ke Supabase!`);
-      setTimeout(() => setSuccessMsg(''), 4000);
+      setSuccessMsg(`🎉 Berhasil menyimpan ${records.length} data absensi siswa ke Database Supabase!`);
+      setTimeout(() => setSuccessMsg(''), 5000);
     } catch (err) {
-      alert('Gagal menyimpan absensi: ' + err.message);
+      console.error('Gagal menyimpan absensi:', err);
+      alert('Gagal menyimpan absensi ke database: ' + (err.message || err));
     } finally {
       setSaving(false);
     }
