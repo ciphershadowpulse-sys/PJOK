@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Users, GraduationCap, Calendar, Clock, ShieldCheck, Plus, Trash2, Edit, Save, X, Search, RefreshCw, Download, FileSpreadsheet, Upload, CheckCircle2 } from 'lucide-react';
+import { Users, GraduationCap, Calendar, Clock, ShieldCheck, Plus, Trash2, Edit, Save, X, Search, RefreshCw, Download, FileSpreadsheet, Upload, CheckCircle2, AlertCircle, Filter } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { getAllUsers, getAllGuru, getAllKelas, getAllSiswa, getAllJadwal, getAuditLogs, addOrUpdateSiswa, addOrUpdateSiswaBatch, addOrUpdateJadwal, deleteJadwal, deleteSiswa } from '../services/storage';
+import { getAllUsers, getAllGuru, getAllKelas, getAllSiswa, getAllJadwal, getAuditLogs, addOrUpdateKelas, addOrUpdateSiswa, addOrUpdateSiswaBatch, addOrUpdateJadwal, deleteJadwal, deleteSiswa } from '../services/storage';
 
 export default function AdminDashboard({ user }) {
   const [activeTab, setActiveTab] = useState('jadwal'); // 'jadwal', 'siswa', 'guru', 'logs'
@@ -14,6 +14,10 @@ export default function AdminDashboard({ user }) {
   const [jadwal, setJadwal] = useState([]);
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // Student Search & Filter states
+  const [siswaSearch, setSiswaSearch] = useState('');
+  const [siswaKelasFilter, setSiswaKelasFilter] = useState('semua');
 
   // Modals state
   const [showJadwalModal, setShowJadwalModal] = useState(false);
@@ -72,7 +76,7 @@ export default function AdminDashboard({ user }) {
     }
   };
 
-  // Submit Siswa Form
+  // Submit Siswa Form (Tambah / Edit)
   const handleSaveSiswa = async (e) => {
     e.preventDefault();
     if (!siswaForm.nis || !siswaForm.nama_siswa || !siswaForm.kelas_id) {
@@ -99,6 +103,20 @@ export default function AdminDashboard({ user }) {
     }
   };
 
+  const handleEditJadwal = (j) => {
+    setJadwalForm({
+      id: j.id,
+      guru_id: j.guru_id || guru[0]?.id || '',
+      kelas_id: j.kelas_id || kelas[0]?.id || '',
+      hari: j.hari || 'Senin',
+      jam_mulai: j.jam_mulai ? String(j.jam_mulai).substring(0, 5) : '07:00',
+      jam_selesai: j.jam_selesai ? String(j.jam_selesai).substring(0, 5) : '08:30',
+      mata_pelajaran: j.mata_pelajaran || 'PJOK',
+      lokasi: j.lokasi || 'Lapangan Utama'
+    });
+    setShowJadwalModal(true);
+  };
+
   const handleDeleteSiswa = async (id) => {
     if (confirm('Apakah Anda yakin ingin menghapus siswa ini?')) {
       try {
@@ -110,25 +128,52 @@ export default function AdminDashboard({ user }) {
     }
   };
 
+  const handleEditSiswa = (s) => {
+    setSiswaForm({
+      id: s.id,
+      nis: s.nis || '',
+      nama_siswa: s.nama_siswa || '',
+      kelas_id: s.kelas_id || kelas[0]?.id || '',
+      jenis_kelamin: s.jenis_kelamin || 'L'
+    });
+    setShowSiswaModal(true);
+  };
+
   const fileInputRef = React.useRef(null);
   const [importStatusMsg, setImportStatusMsg] = useState('');
+  const [importStatusType, setImportStatusType] = useState('success');
 
   // Download Excel Template for Importing Students
   const downloadSiswaTemplate = () => {
-    const templateData = [
-      { 'NIS': '1013', 'Nama Siswa': 'Ahmad Zaky Pratama', 'Nama Kelas': '5A', 'Jenis Kelamin (L/P)': 'L' },
-      { 'NIS': '1014', 'Nama Siswa': 'Nabila Putri Setiawan', 'Nama Kelas': '5B', 'Jenis Kelamin (L/P)': 'P' }
-    ];
+    try {
+      const templateData = [
+        { 'NIS': '1013', 'Nama Siswa': 'Ahmad Zaky Pratama', 'Nama Kelas': '5A', 'Jenis Kelamin (L/P)': 'L' },
+        { 'NIS': '1014', 'Nama Siswa': 'Nabila Putri Setiawan', 'Nama Kelas': '5A', 'Jenis Kelamin (L/P)': 'P' },
+        { 'NIS': '1015', 'Nama Siswa': 'Bagus Kurniawan', 'Nama Kelas': '5B', 'Jenis Kelamin (L/P)': 'L' },
+        { 'NIS': '1016', 'Nama Siswa': 'Dewi Anggraini', 'Nama Kelas': '6A', 'Jenis Kelamin (L/P)': 'P' }
+      ];
 
-    const worksheet = XLSX.utils.json_to_sheet(templateData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Template Siswa');
-    XLSX.writeFile(workbook, 'Template_Import_Siswa_PJOK.xlsx');
+      const worksheet = XLSX.utils.json_to_sheet(templateData);
+
+      // Lebar kolom rapi
+      worksheet['!cols'] = [
+        { wch: 14 }, // NIS
+        { wch: 30 }, // Nama Siswa
+        { wch: 15 }, // Nama Kelas
+        { wch: 24 }  // Jenis Kelamin (L/P)
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Template Siswa');
+      XLSX.writeFile(workbook, 'Template_Import_Siswa_PJOK.xlsx');
+    } catch (err) {
+      alert('Gagal mendownload template Excel: ' + err.message);
+    }
   };
 
   // Handle Excel File Upload & Parse
   const handleImportSiswaExcel = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
@@ -136,28 +181,116 @@ export default function AdminDashboard({ user }) {
       try {
         setLoading(true);
         setImportStatusMsg('');
-        const bstr = evt.target.result;
-        const workbook = XLSX.read(bstr, { type: 'binary' });
+        
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        const rawData = XLSX.utils.sheet_to_json(sheet);
+        const rawData = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
         if (!rawData || rawData.length === 0) {
-          throw new Error('File Excel kosong atau format tidak sesuai.');
+          throw new Error('File Excel kosong atau format tabel tidak sesuai.');
         }
 
+        const currentKelasList = [...kelas];
+        let newClassesCount = 0;
         const toImport = [];
-        for (const row of rawData) {
-          const nis = String(row['NIS'] || row['nis'] || '').trim();
-          const namaSiswa = String(row['Nama Siswa'] || row['nama_siswa'] || row['Nama'] || '').trim();
-          const namaKelas = String(row['Nama Kelas'] || row['nama_kelas'] || row['Kelas'] || '').trim().toUpperCase();
-          const genderRaw = String(row['Jenis Kelamin (L/P)'] || row['Jenis Kelamin'] || row['jenis_kelamin'] || 'L').trim().toUpperCase();
-          const gender = genderRaw.startsWith('P') ? 'P' : 'L';
+
+        const normalizeClassName = (str) => {
+          if (!str) return '';
+          return String(str)
+            .toUpperCase()
+            .replace(/^KELAS\s*/i, '')
+            .replace(/\s+/g, '')
+            .replace(/-/g, '')
+            .trim();
+        };
+
+        for (let i = 0; i < rawData.length; i++) {
+          const row = rawData[i];
+
+          // 1. Ekstrak NIS
+          let rawNis = row['NIS'] ?? row['nis'] ?? row['Nomor Induk'] ?? row['No Induk'] ?? row['NISN'];
+          if (rawNis === undefined || rawNis === '') {
+            for (const k of Object.keys(row)) {
+              if (/nis|induk/i.test(k)) {
+                rawNis = row[k];
+                break;
+              }
+            }
+          }
+          const nis = String(rawNis ?? '').replace(/\.0$/, '').trim();
+
+          // 2. Ekstrak Nama Siswa
+          let rawNama = row['Nama Siswa'] ?? row['nama_siswa'] ?? row['Nama Lengkap'] ?? row['Nama'] ?? row['NAMA SISWA'];
+          if (!rawNama) {
+            for (const k of Object.keys(row)) {
+              if (/nama/i.test(k)) {
+                rawNama = row[k];
+                break;
+              }
+            }
+          }
+          const namaSiswa = String(rawNama ?? '').trim();
+
+          // 3. Ekstrak Nama Kelas
+          let rawKelas = row['Nama Kelas'] ?? row['nama_kelas'] ?? row['Kelas'] ?? row['KELAS'] ?? row['Tingkat'];
+          if (!rawKelas) {
+            for (const k of Object.keys(row)) {
+              if (/kelas/i.test(k)) {
+                rawKelas = row[k];
+                break;
+              }
+            }
+          }
+          const namaKelas = String(rawKelas ?? '').trim();
+
+          // 4. Ekstrak Gender
+          let rawGender = row['Jenis Kelamin (L/P)'] ?? row['Jenis Kelamin'] ?? row['jenis_kelamin'] ?? row['JK'] ?? row['Gender'] ?? 'L';
+          if (!rawGender) {
+            for (const k of Object.keys(row)) {
+              if (/kelamin|jk|gender/i.test(k)) {
+                rawGender = row[k];
+                break;
+              }
+            }
+          }
+          const genderStr = String(rawGender ?? '').trim().toUpperCase();
+          const gender = (genderStr.startsWith('P') || genderStr === 'PEREMPUAN' || genderStr === 'WOMAN') ? 'P' : 'L';
 
           if (!nis || !namaSiswa) continue;
 
-          // Find matching class ID by class name or assign first class
-          const matchedKelas = kelas.find(k => k.nama_kelas.toUpperCase() === namaKelas) || kelas[0];
+          // Cari atau Buat Kelas Otomatis
+          let matchedKelas = null;
+          const cleanTargetKelas = normalizeClassName(namaKelas);
+
+          if (cleanTargetKelas) {
+            matchedKelas = currentKelasList.find(k => normalizeClassName(k.nama_kelas) === cleanTargetKelas);
+            
+            // Jika kelas belum ada di database, buat otomatis di Supabase
+            if (!matchedKelas) {
+              try {
+                const formattedClassName = cleanTargetKelas;
+                const tingkat = formattedClassName.replace(/\D/g, '') || '1';
+                const createdKelas = await addOrUpdateKelas({
+                  nama_kelas: formattedClassName,
+                  tingkat: tingkat
+                });
+                if (createdKelas) {
+                  currentKelasList.push(createdKelas);
+                  matchedKelas = createdKelas;
+                  newClassesCount++;
+                }
+              } catch (errCreate) {
+                console.warn('Auto create kelas note:', errCreate);
+              }
+            }
+          }
+
+          // Fallback jika tidak ada nama kelas
+          if (!matchedKelas && currentKelasList.length > 0) {
+            matchedKelas = currentKelasList[0];
+          }
 
           toImport.push({
             nis,
@@ -169,20 +302,27 @@ export default function AdminDashboard({ user }) {
         }
 
         if (toImport.length === 0) {
-          throw new Error('Tidak ada data siswa valid yang ditemukan di file Excel.');
+          throw new Error('Tidak ada data siswa valid yang ditemukan di file Excel. Pastikan kolom NIS dan Nama Siswa terisi.');
         }
 
         await addOrUpdateSiswaBatch(toImport);
         await loadAllAdminData();
-        setImportStatusMsg(`🎉 Berhasil mengimpor ${toImport.length} data siswa dari file Excel ke database Supabase!`);
+        
+        let msg = `🎉 Berhasil mengimpor ${toImport.length} data siswa ke database!`;
+        if (newClassesCount > 0) {
+          msg += ` (${newClassesCount} kelas baru otomatis ditambahkan)`;
+        }
+        setImportStatusType('success');
+        setImportStatusMsg(msg);
       } catch (err) {
-        alert('Gagal mengimpor Excel: ' + err.message);
+        setImportStatusType('error');
+        setImportStatusMsg('❌ Gagal mengimpor Excel: ' + err.message);
       } finally {
         setLoading(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
       }
     };
-    reader.readAsBinaryString(file);
+    reader.readAsArrayBuffer(file);
   };
 
   return (
@@ -294,7 +434,14 @@ export default function AdminDashboard({ user }) {
                       <td className="p-3.5 font-extrabold text-emerald-600">Kelas {k?.nama_kelas || '-'}</td>
                       <td className="p-3.5 text-slate-800">{g?.nama_guru || '-'}</td>
                       <td className="p-3.5 text-slate-600">{j.lokasi || 'Lapangan Utama'}</td>
-                      <td className="p-3.5 text-right space-x-2">
+                      <td className="p-3.5 text-right space-x-1">
+                        <button
+                          onClick={() => handleEditJadwal(j)}
+                          className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                          title="Edit Jadwal"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => handleDeleteJadwal(j.id)}
                           className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
@@ -313,110 +460,182 @@ export default function AdminDashboard({ user }) {
       )}
 
       {/* TAB 2: MANAJEMEN SISWA */}
-      {activeTab === 'siswa' && (
-        <div className="space-y-4">
+      {activeTab === 'siswa' && (() => {
+        const filteredSiswa = siswa.filter((s) => {
+          const matchesSearch =
+            s.nama_siswa?.toLowerCase().includes(siswaSearch.toLowerCase()) ||
+            s.nis?.toLowerCase().includes(siswaSearch.toLowerCase());
+          const matchesKelas =
+            siswaKelasFilter === 'semua' || s.kelas_id === siswaKelasFilter;
+          return matchesSearch && matchesKelas;
+        });
 
-          {/* Import Status Toast */}
-          {importStatusMsg && (
-            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 flex items-center justify-between text-emerald-700 text-xs font-bold animate-fade-in">
-              <div className="flex items-center space-x-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                <span>{importStatusMsg}</span>
+        const totalLaki = siswa.filter(s => s.jenis_kelamin === 'L').length;
+        const totalPerempuan = siswa.filter(s => s.jenis_kelamin === 'P').length;
+
+        return (
+          <div className="space-y-4">
+
+            {/* Import Status Toast Banner */}
+            {importStatusMsg && (
+              <div className={`border rounded-2xl p-4 flex items-center justify-between text-xs font-bold animate-fade-in ${
+                importStatusType === 'error'
+                  ? 'bg-rose-500/10 border-rose-500/30 text-rose-700'
+                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700'
+              }`}>
+                <div className="flex items-center space-x-2">
+                  {importStatusType === 'error' ? (
+                    <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
+                  ) : (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                  )}
+                  <span>{importStatusMsg}</span>
+                </div>
+                <button onClick={() => setImportStatusMsg('')} className="p-1 text-slate-500 hover:text-slate-800">
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button onClick={() => setImportStatusMsg('')} className="text-emerald-800 hover:text-emerald-950">
-                <X className="w-4 h-4" />
-              </button>
+            )}
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImportSiswaExcel}
+              accept=".xlsx, .xls"
+              className="hidden"
+            />
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-extrabold text-slate-900">Daftar Siswa Sekolah</h2>
+                <p className="text-xs text-slate-500 font-medium">
+                  Total {siswa.length} Siswa ({totalLaki} Laki-laki, {totalPerempuan} Perempuan)
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Button Unduh Template Excel */}
+                <button
+                  onClick={downloadSiswaTemplate}
+                  className="py-2.5 px-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 font-extrabold text-xs rounded-2xl shadow-sm flex items-center space-x-1.5 transition-all cursor-pointer"
+                  title="Unduh Format Contoh File Excel"
+                >
+                  <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                  <span>Unduh Template Excel</span>
+                </button>
+
+                {/* Button Impor Excel Siswa */}
+                <button
+                  onClick={() => fileInputRef.current && fileInputRef.current.click()}
+                  className="py-2.5 px-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-emerald-600/30 flex items-center space-x-1.5 transition-all cursor-pointer"
+                  title="Unggah dan Impor File Excel Siswa"
+                >
+                  <Upload className="w-4 h-4" />
+                  <span>Impor Excel Siswa</span>
+                </button>
+
+                {/* Button Manual Tambah Siswa */}
+                <button
+                  onClick={() => {
+                    setSiswaForm({ id: '', nis: '', nama_siswa: '', kelas_id: kelas[0]?.id || '', jenis_kelamin: 'L' });
+                    setShowSiswaModal(true);
+                  }}
+                  className="py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-sky-600/30 flex items-center space-x-1.5 transition-all cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Tambah Siswa</span>
+                </button>
+              </div>
             </div>
-          )}
 
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleImportSiswaExcel}
-            accept=".xlsx, .xls"
-            className="hidden"
-          />
+            {/* Filter & Search Bar */}
+            <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 text-xs">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Cari berdasarkan NIS atau Nama Siswa..."
+                  value={siswaSearch}
+                  onChange={(e) => setSiswaSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-extrabold text-slate-900">Daftar Siswa Sekolah</h2>
-              <p className="text-xs text-slate-500 font-medium">Kelola data master siswa atau impor massal via file Excel</p>
+              <div className="flex items-center space-x-2">
+                <Filter className="w-4 h-4 text-slate-400 flex-shrink-0" />
+                <select
+                  value={siswaKelasFilter}
+                  onChange={(e) => setSiswaKelasFilter(e.target.value)}
+                  className="bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                >
+                  <option value="semua">Semua Kelas ({kelas.length})</option>
+                  {kelas.map(k => (
+                    <option key={k.id} value={k.id}>Kelas {k.nama_kelas}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
-              {/* Button Unduh Template Excel */}
-              <button
-                onClick={downloadSiswaTemplate}
-                className="py-2.5 px-3.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300 font-extrabold text-xs rounded-2xl shadow-sm flex items-center space-x-1.5 transition-all cursor-pointer"
-                title="Unduh Format Contoh File Excel"
-              >
-                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                <span>Unduh Template Excel</span>
-              </button>
-
-              {/* Button Impor Excel Siswa */}
-              <button
-                onClick={() => fileInputRef.current && fileInputRef.current.click()}
-                className="py-2.5 px-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-emerald-600/30 flex items-center space-x-1.5 transition-all cursor-pointer"
-                title="Unggah dan Impor File Excel Siswa"
-              >
-                <Upload className="w-4 h-4" />
-                <span>Impor Excel Siswa</span>
-              </button>
-
-              {/* Button Manual Tambah Siswa */}
-              <button
-                onClick={() => {
-                  setSiswaForm({ id: '', nis: '', nama_siswa: '', kelas_id: kelas[0]?.id || '', jenis_kelamin: 'L' });
-                  setShowSiswaModal(true);
-                }}
-                className="py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-sky-600/30 flex items-center space-x-1.5 transition-all cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Tambah Siswa</span>
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <table className="w-full text-left border-collapse text-xs">
-              <thead>
-                <tr className="bg-slate-900 text-white font-extrabold uppercase">
-                  <th className="p-3.5">NIS</th>
-                  <th className="p-3.5">Nama Siswa</th>
-                  <th className="p-3.5">Kelas</th>
-                  <th className="p-3.5">Gender</th>
-                  <th className="p-3.5">QR Code ID</th>
-                  <th className="p-3.5 text-right">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
-                {siswa.map((s) => {
-                  const k = kelas.find(item => item.id === s.kelas_id);
-                  return (
-                    <tr key={s.id} className="hover:bg-slate-50">
-                      <td className="p-3.5 font-bold text-slate-600">{s.nis}</td>
-                      <td className="p-3.5 font-extrabold text-slate-900">{s.nama_siswa}</td>
-                      <td className="p-3.5 font-bold text-sky-600">Kelas {k?.nama_kelas || '-'}</td>
-                      <td className="p-3.5">{s.jenis_kelamin}</td>
-                      <td className="p-3.5 font-mono text-[10px] text-slate-500">{s.qr_code}</td>
-                      <td className="p-3.5 text-right">
-                        <button
-                          onClick={() => handleDeleteSiswa(s.id)}
-                          className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
-                          title="Hapus Siswa"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+            {/* Table Siswa */}
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-900 text-white font-extrabold uppercase">
+                    <th className="p-3.5">NIS</th>
+                    <th className="p-3.5">Nama Siswa</th>
+                    <th className="p-3.5">Kelas</th>
+                    <th className="p-3.5">Gender</th>
+                    <th className="p-3.5">QR Code ID</th>
+                    <th className="p-3.5 text-right">Aksi</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  {filteredSiswa.length > 0 ? (
+                    filteredSiswa.map((s) => {
+                      const k = kelas.find(item => item.id === s.kelas_id);
+                      return (
+                        <tr key={s.id} className="hover:bg-slate-50">
+                          <td className="p-3.5 font-bold text-slate-600">{s.nis}</td>
+                          <td className="p-3.5 font-extrabold text-slate-900">{s.nama_siswa}</td>
+                          <td className="p-3.5 font-bold text-sky-600">Kelas {k?.nama_kelas || '-'}</td>
+                          <td className="p-3.5">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${s.jenis_kelamin === 'P' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700'}`}>
+                              {s.jenis_kelamin === 'P' ? 'Perempuan (P)' : 'Laki-laki (L)'}
+                            </span>
+                          </td>
+                          <td className="p-3.5 font-mono text-[10px] text-slate-500">{s.qr_code}</td>
+                          <td className="p-3.5 text-right space-x-1">
+                            <button
+                              onClick={() => handleEditSiswa(s)}
+                              className="p-1.5 text-sky-600 hover:bg-sky-50 rounded-lg transition-colors"
+                              title="Edit Data Siswa"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSiswa(s.id)}
+                              className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                              title="Hapus Siswa"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan="6" className="p-8 text-center text-slate-400 font-medium">
+                        Tidak ada data siswa yang cocok.
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* TAB 3: DATA GURU */}
       {activeTab === 'guru' && (
@@ -457,7 +676,9 @@ export default function AdminDashboard({ user }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 text-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
-              <h3 className="font-extrabold text-base text-emerald-400">Tambah Jadwal Olahraga</h3>
+              <h3 className="font-extrabold text-base text-emerald-400">
+                {jadwalForm.id ? 'Edit Jadwal Olahraga' : 'Tambah Jadwal PJOK'}
+              </h3>
               <button onClick={() => setShowJadwalModal(false)} className="text-slate-400 hover:text-white p-1">
                 <X className="w-5 h-5" />
               </button>
@@ -553,7 +774,9 @@ export default function AdminDashboard({ user }) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl w-full max-w-md p-6 text-white shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-4">
-              <h3 className="font-extrabold text-base text-sky-400">Tambah Data Siswa</h3>
+              <h3 className="font-extrabold text-base text-sky-400">
+                {siswaForm.id ? 'Edit Data Siswa' : 'Tambah Data Siswa'}
+              </h3>
               <button onClick={() => setShowSiswaModal(false)} className="text-slate-400 hover:text-white p-1">
                 <X className="w-5 h-5" />
               </button>

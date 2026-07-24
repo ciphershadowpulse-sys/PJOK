@@ -237,12 +237,32 @@ export async function loginWithGoogle() {
 export async function getGuruByUserId(userId) {
   if (isSupabaseConfigured && navigator.onLine) {
     try {
-      const { data, error } = await supabase
+      // 1. Cari berdasarkan user_id
+      const { data } = await supabase
         .from('guru')
         .select('*')
         .eq('user_id', userId)
-        .single();
-      if (data && !error) return data;
+        .maybeSingle();
+
+      if (data) return data;
+
+      // 2. Cari berdasarkan ID guru langsung
+      const { data: guruById } = await supabase
+        .from('guru')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+
+      if (guruById) return guruById;
+
+      // 3. Cari guru pertama yang ada di database
+      const { data: firstGuru } = await supabase
+        .from('guru')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
+
+      if (firstGuru) return firstGuru;
     } catch (e) {
       console.warn('getGuruByUserId query note:', e);
     }
@@ -333,31 +353,108 @@ export async function getAbsensiRecord(jadwalId, tanggalStr) {
 export async function saveAbsensiBatch({ jadwalId, tanggal, records, photoData, gpsLocation, userId }) {
   if (isSupabaseConfigured && navigator.onLine) {
     try {
-      const toInsert = records.map(r => ({
-        siswa_id: r.siswa_id,
-        jadwal_id: jadwalId,
-        tanggal,
-        status: r.status || 'Hadir',
-        keterangan: r.keterangan || '',
-        foto_kegiatan: photoData || null,
-        gps_lat: gpsLocation?.lat || null,
-        gps_lng: gpsLocation?.lng || null
-      }));
+      if (!records || !Array.isArray(records) || records.length === 0) {
+        return [];
+      }
 
-      const { data, error } = await supabase
+      // 1. Ambil data absensi yang sudah ada untuk jadwal & tanggal ini
+      const { data: existingAbsensi, error: fetchErr } = await supabase
         .from('absensi')
-        .upsert(toInsert, { onConflict: 'siswa_id,jadwal_id,tanggal' })
-        .select('*');
+        .select('id, siswa_id')
+        .eq('jadwal_id', jadwalId)
+        .eq('tanggal', tanggal);
 
-      if (error) throw error;
-      logAudit(userId, 'SIMPAN_ABSENSI', `Simpan absensi jadwal ID ${jadwalId} tanggal ${tanggal} (${records.length} siswa).`);
-      return data || toInsert;
+      if (fetchErr) {
+        console.warn('Fetch existing absensi note:', fetchErr.message);
+      }
+
+      const existingMap = new Map();
+      if (existingAbsensi && Array.isArray(existingAbsensi)) {
+        existingAbsensi.forEach(a => {
+          if (a && a.siswa_id && a.id) {
+            existingMap.set(String(a.siswa_id).trim(), String(a.id).trim());
+          }
+        });
+      }
+
+      const cleanJadwalId = String(jadwalId || 'jadwal').replace(/[^a-zA-Z0-9]/g, '_');
+      const cleanTanggal = String(tanggal || new Date().toISOString().split('T')[0]).replace(/-/g, '');
+
+      // 2. Simpan atau Update tiap siswa secara presisi
+      const results = [];
+
+      for (let idx = 0; idx < records.length; idx++) {
+        const r = records[idx];
+        if (!r || (!r.siswa_id && !r.id)) continue;
+
+        const cleanSiswaId = String(r.siswa_id || '').trim();
+        const existingId = existingMap.get(cleanSiswaId);
+        const cleanSiswaStr = cleanSiswaId.replace(/[^a-zA-Z0-9]/g, '_');
+
+        const recordData = {
+          siswa_id: cleanSiswaId,
+          jadwal_id: String(jadwalId),
+          tanggal: String(tanggal),
+          status: String(r.status || 'Hadir'),
+          keterangan: String(r.keterangan || ''),
+          foto_kegiatan: photoData || null,
+          gps_lat: gpsLocation?.lat ? Number(gpsLocation.lat) : null,
+          gps_lng: gpsLocation?.lng ? Number(gpsLocation.lng) : null
+        };
+
+        if (existingId) {
+          // Update data absensi yang sudah ada berdasarkan ID
+          const { data: updateData, error: updateErr } = await supabase
+            .from('absensi')
+            .update(recordData)
+            .eq('id', existingId)
+            .select('*');
+
+          if (updateErr) {
+            console.error(`Error updating absensi siswa ${cleanSiswaId}:`, updateErr);
+            throw new Error(`Gagal update absensi: ${updateErr.message}`);
+          }
+          if (updateData && updateData.length > 0) {
+            results.push(updateData[0]);
+          } else {
+            results.push({ id: existingId, ...recordData });
+          }
+        } else {
+          // Insert data absensi baru dengan ID string eksplisit
+          const generatedId = (r.id && typeof r.id === 'string' && r.id.trim() !== '')
+            ? r.id.trim()
+            : `absen_${cleanJadwalId}_${cleanSiswaStr}_${cleanTanggal}_${Date.now()}_${idx}`;
+
+          const newPayload = {
+            id: generatedId,
+            ...recordData
+          };
+
+          const { data: insertData, error: insertErr } = await supabase
+            .from('absensi')
+            .insert([newPayload])
+            .select('*');
+
+          if (insertErr) {
+            console.error(`Error inserting absensi siswa ${cleanSiswaId}:`, insertErr);
+            throw new Error(`Gagal simpan absensi: ${insertErr.message}`);
+          }
+          if (insertData && insertData.length > 0) {
+            results.push(insertData[0]);
+          } else {
+            results.push(newPayload);
+          }
+        }
+      }
+
+      logAudit(userId || 'guru', 'SIMPAN_ABSENSI', `Simpan absensi jadwal ID ${jadwalId} tanggal ${tanggal} (${results.length} siswa).`);
+      return results;
     } catch (e) {
-      alert('Gagal menyimpan ke Supabase: ' + e.message);
+      console.error('saveAbsensiBatch error:', e);
       throw e;
     }
   }
-  throw new Error('Koneksi Supabase tidak tersedia.');
+  throw new Error('Koneksi Supabase tidak terhubung atau offline.');
 }
 
 // ADMIN / KELOLA DATA APIS
@@ -407,7 +504,7 @@ export async function getAllJadwal() {
 
 export async function getAllAbsensi() {
   if (isSupabaseConfigured && navigator.onLine) {
-    const { data } = await supabase.from('absensi').select('*');
+    const { data } = await supabase.from('absensi').select('*').order('tanggal', { ascending: false });
     if (data) return data;
   }
   return [];
@@ -422,6 +519,23 @@ export async function getAuditLogs() {
 }
 
 // MUTATIONS (SUPABASE DIRECT)
+export async function addOrUpdateKelas(kelasData) {
+  if (isSupabaseConfigured && navigator.onLine) {
+    const cleanNama = String(kelasData.nama_kelas || '').trim().toUpperCase();
+    const cleanTingkat = String(kelasData.tingkat || cleanNama.replace(/\D/g, '') || '1');
+    const payload = {
+      id: kelasData.id || `kelas_${cleanNama.toLowerCase().replace(/\s+/g, '_')}`,
+      nama_kelas: cleanNama,
+      tingkat: cleanTingkat
+    };
+
+    const { data, error } = await supabase.from('kelas').upsert([payload], { onConflict: 'id' }).select('*');
+    if (error) throw error;
+    return data?.[0] || payload;
+  }
+  throw new Error('Supabase tidak terhubung.');
+}
+
 export async function addOrUpdateSiswa(siswaData) {
   if (isSupabaseConfigured && navigator.onLine) {
     const payload = {
@@ -439,13 +553,29 @@ export async function addOrUpdateSiswa(siswaData) {
 
 export async function addOrUpdateSiswaBatch(siswaArray) {
   if (isSupabaseConfigured && navigator.onLine) {
+    // 1. Ambil data siswa yang sudah ada untuk mempertahankan ID & QR Code jika NIS sudah terdaftar
+    const { data: existingSiswa } = await supabase.from('siswa').select('id, nis, qr_code');
+    const existingMap = new Map();
+    if (existingSiswa) {
+      existingSiswa.forEach(s => {
+        if (s.nis) {
+          existingMap.set(String(s.nis).trim().toUpperCase(), s);
+        }
+      });
+    }
+
     const payload = siswaArray.map((s, idx) => {
-      const p = {
-        id: s.id || `siswa_${Date.now()}_${idx}_${Math.random().toString(36).substring(2, 6)}`,
-        ...s,
-        qr_code: s.qr_code || `QR-${s.nis}`
+      const cleanNis = String(s.nis).trim();
+      const existingRecord = existingMap.get(cleanNis.toUpperCase());
+
+      return {
+        id: s.id || existingRecord?.id || `siswa_${cleanNis}_${Date.now()}_${idx}`,
+        nis: cleanNis,
+        nama_siswa: String(s.nama_siswa || '').trim(),
+        kelas_id: s.kelas_id || null,
+        jenis_kelamin: s.jenis_kelamin === 'P' ? 'P' : 'L',
+        qr_code: s.qr_code || existingRecord?.qr_code || `QR-${cleanNis}`
       };
-      return p;
     });
 
     const { data, error } = await supabase.from('siswa').upsert(payload, { onConflict: 'nis' }).select('*');

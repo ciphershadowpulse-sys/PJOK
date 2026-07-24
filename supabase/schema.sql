@@ -1,5 +1,12 @@
--- SCHEMA DATABASE UNTUK APLIKASI ABSENSI GURU OLAHRAGA (PJOK)
--- POSTGRESQL DDL (SEMUA FOREIGN KEY MENGGUNAKAN TIPE TEXT & ON DELETE CASCADE)
+-- ============================================================================
+-- SCHEMA DATABASE SUPABASE UNTUK APLIKASI ABSENSI GURU OLAHRAGA (PJOK)
+-- DOKUMEN DDL LENGKAP & TERHUBUNG LANGSUNG UNTUK ABSENSI REALTIME PER SCAN QR
+-- ============================================================================
+-- Petunjuk Penggunaan di Supabase:
+-- 1. Buka Dashboard Supabase Anda (https://supabase.com/dashboard)
+-- 2. Pilih Proyek Anda -> Masuk ke Menu "SQL Editor" -> Buat Query Baru ("New query")
+-- 3. Copypaste seluruh isi dokumen SQL ini, lalu klik tombol "RUN".
+-- ============================================================================
 
 -- 1. TABEL USERS (Profil / Pengguna System)
 CREATE TABLE IF NOT EXISTS users (
@@ -40,7 +47,7 @@ CREATE TABLE IF NOT EXISTS siswa (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 5. TABEL JADWAL PELAJARAN
+-- 5. TABEL JADWAL PELAJARAN (Master Jadwal Permanen Mingguan/Harian)
 CREATE TABLE IF NOT EXISTS jadwal_pelajaran (
     id TEXT PRIMARY KEY,
     guru_id TEXT REFERENCES guru(id) ON DELETE CASCADE,
@@ -53,9 +60,9 @@ CREATE TABLE IF NOT EXISTS jadwal_pelajaran (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 6. TABEL ABSENSI
+-- 6. TABEL ABSENSI (Terhubung Langsung saat Scan QR Code)
 CREATE TABLE IF NOT EXISTS absensi (
-    id TEXT PRIMARY KEY,
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     siswa_id TEXT REFERENCES siswa(id) ON DELETE CASCADE,
     jadwal_id TEXT REFERENCES jadwal_pelajaran(id) ON DELETE CASCADE,
     tanggal DATE NOT NULL DEFAULT CURRENT_DATE,
@@ -71,14 +78,21 @@ CREATE TABLE IF NOT EXISTS absensi (
 
 -- 7. TABEL AUDIT LOGS
 CREATE TABLE IF NOT EXISTS audit_logs (
-    id TEXT PRIMARY KEY,
+    id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
     user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
     aksi TEXT NOT NULL,
     detail TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 8. PEMBATASAN RLS (ROW LEVEL SECURITY) DAN KEBIJAKAN IZIN PERMISSIVE
+-- 8. INDEKS OPTIMASI PENCARIAN ABSENSI & SCAN QR CODE
+CREATE INDEX IF NOT EXISTS idx_siswa_nis ON siswa(nis);
+CREATE INDEX IF NOT EXISTS idx_siswa_qr ON siswa(qr_code);
+CREATE INDEX IF NOT EXISTS idx_siswa_kelas ON siswa(kelas_id);
+CREATE INDEX IF NOT EXISTS idx_absensi_jadwal_tanggal ON absensi(jadwal_id, tanggal);
+CREATE INDEX IF NOT EXISTS idx_absensi_siswa ON absensi(siswa_id);
+
+-- 9. PEMBATASAN RLS (ROW LEVEL SECURITY) DAN KEBIJAKAN IZIN AKSI PENUH
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE guru DISABLE ROW LEVEL SECURITY;
 ALTER TABLE kelas DISABLE ROW LEVEL SECURITY;
@@ -116,16 +130,15 @@ CREATE POLICY "Allow all on absensi" ON absensi FOR ALL TO anon, authenticated U
 DROP POLICY IF EXISTS "Allow all on audit_logs" ON audit_logs;
 CREATE POLICY "Allow all on audit_logs" ON audit_logs FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
 
--- 9. BERIKAN HAK AKSES PENUH (GRANT) UNTUK PERAN ANON & AUTHENTICATED
+-- 10. HAK AKSES PERMANEN (GRANT) UNTUK SUPABASE ANON & AUTHENTICATED ROLES
 GRANT ALL ON ALL TABLES IN SCHEMA public TO anon, authenticated, postgres, service_role;
 GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, postgres, service_role;
 GRANT ALL ON ALL FUNCTIONS IN SCHEMA public TO anon, authenticated, postgres, service_role;
 
--- 10. AUTOMATIC TRIGGER PENDAFTARAN DARI SUPABASE AUTH KE TABEL PUBLIC USERS & GURU
+-- 11. AUTOMATIC TRIGGER PENDAFTARAN SUPABASE AUTH KE TABEL PUBLIC USERS & GURU
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- Insert ke tabel public.users
   INSERT INTO public.users (id, nama, username, email, role)
   VALUES (
     NEW.id::TEXT,
@@ -139,7 +152,6 @@ BEGIN
     username = EXCLUDED.username,
     email = EXCLUDED.email;
 
-  -- Insert ke tabel public.guru
   INSERT INTO public.guru (id, user_id, nama_guru, nip, mata_pelajaran)
   VALUES (
     CONCAT('guru_', NEW.id::TEXT),
@@ -154,34 +166,33 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Pasang trigger pada tabel auth.users Supabase
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
--- SAMPLE SEED DATA UNTUK PENGUJIAN LOKAL & SYSTEM
+-- 12. SAMPLE SEED DATA AWAL DENGAN CONFLICT PROTECTION
 INSERT INTO users (id, nama, username, email, role) VALUES
   ('usr_budi', 'Pak Budi Prasetyo, S.Pd', 'budi_pjok', 'budi@sekolah.sch.id', 'guru'),
   ('usr_siti', 'Bu Siti Aminah, S.Pd', 'siti_pjok', 'siti@sekolah.sch.id', 'guru')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO guru (id, user_id, nama_guru, nip, mata_pelajaran) VALUES
   ('guru_budi', 'usr_budi', 'Pak Budi Prasetyo, S.Pd', '198504122010011005', 'PJOK'),
   ('guru_siti', 'usr_siti', 'Bu Siti Aminah, S.Pd', '198809232012022008', 'PJOK')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (user_id) DO NOTHING;
 
 INSERT INTO kelas (id, nama_kelas, tingkat) VALUES
   ('kelas_5a', '5A', '5'),
   ('kelas_5b', '5B', '5'),
   ('kelas_6a', '6A', '6')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO jadwal_pelajaran (id, guru_id, kelas_id, hari, jam_mulai, jam_selesai, mata_pelajaran, lokasi) VALUES
   ('jadwal_1', 'guru_budi', 'kelas_5a', 'Senin', '07:00:00', '08:30:00', 'PJOK', 'Lap. Basket Utama'),
   ('jadwal_2', 'guru_budi', 'kelas_5b', 'Senin', '08:30:00', '10:00:00', 'PJOK', 'Lap. Sepak Bola'),
   ('jadwal_3', 'guru_budi', 'kelas_6a', 'Selasa', '07:00:00', '08:30:00', 'PJOK', 'Lap. Serbaguna')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO siswa (id, nis, nama_siswa, kelas_id, jenis_kelamin, qr_code) VALUES
   ('siswa_1001', '1001', 'Ahmad Rizky Pratama', 'kelas_5a', 'L', 'QR-1001'),
@@ -196,4 +207,4 @@ INSERT INTO siswa (id, nis, nama_siswa, kelas_id, jenis_kelamin, qr_code) VALUES
   ('siswa_1010', '1010', 'Indah Permatasari', 'kelas_5a', 'P', 'QR-1010'),
   ('siswa_1011', '1011', 'Bimo Putro', 'kelas_5b', 'L', 'QR-1011'),
   ('siswa_1012', '1012', 'Dian Sastro', 'kelas_5b', 'P', 'QR-1012')
-ON CONFLICT DO NOTHING;
+ON CONFLICT (id) DO NOTHING;

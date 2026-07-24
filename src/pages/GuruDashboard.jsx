@@ -226,32 +226,19 @@ export default function GuruDashboard({ user, currentTime, onSelectJadwalForAbse
                     </div>
                   </div>
 
-                  {/* Dynamic Action Area & Time Lock Rules */}
+                  {/* Action Area for Absensi */}
                   <div className="pt-3 border-t border-slate-100">
-                    {isActive ? (
-                      <button
-                        onClick={() => onSelectJadwalForAbsensi(jadwal)}
-                        className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-extrabold text-sm rounded-2xl shadow-xl shadow-emerald-600/30 flex items-center justify-center space-x-2 transition-all cursor-pointer"
-                      >
-                        <Play className="w-5 h-5 fill-current" />
-                        <span>MULAI ABSENSI SISWA</span>
-                      </button>
-                    ) : (
-                      <div className="space-y-2">
-                        <button
-                          disabled
-                          className="w-full py-3 px-4 bg-slate-100 text-slate-400 font-bold text-xs rounded-2xl flex items-center justify-center space-x-2 cursor-not-allowed border border-slate-200"
-                        >
-                          <Play className="w-4 h-4" />
-                          <span>Mulai Absensi (Terkunci)</span>
-                        </button>
-
-                        <div className="bg-amber-50 border border-amber-200 p-2.5 rounded-xl text-[11px] text-amber-900 font-semibold text-center flex items-center justify-center gap-1.5">
-                          <AlertCircle className="w-4 h-4 text-amber-600 flex-shrink-0" />
-                          <span>Absensi hanya dapat dilakukan pada jam pelajaran yang terjadwal.</span>
-                        </div>
-                      </div>
-                    )}
+                    <button
+                      onClick={() => onSelectJadwalForAbsensi(jadwal)}
+                      className={`w-full py-3.5 px-4 font-extrabold text-sm rounded-2xl shadow-lg flex items-center justify-center space-x-2 transition-all cursor-pointer active:scale-95 ${
+                        isActive
+                          ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-600/30 ring-2 ring-emerald-400'
+                          : 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-900/20'
+                      }`}
+                    >
+                      <Play className="w-5 h-5 fill-current" />
+                      <span>{isActive ? 'MULAI ABSENSI SISWA (REALTIME)' : 'MULAI ABSENSI KELAS INI'}</span>
+                    </button>
                   </div>
 
                 </div>

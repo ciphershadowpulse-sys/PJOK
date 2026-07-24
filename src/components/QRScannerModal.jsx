@@ -144,14 +144,15 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
     const cleanCode = parseRawQrData(rawNisn);
     if (!cleanCode) return;
 
-    setScanNotif(`✅ NIS/QR terdeteksi: ${cleanCode}`);
-    stopCamera();
+    setScanNotif(`✅ Ter-scan: ${cleanCode}`);
 
+    // Panggil callback secara otomatis untuk simpan ke database
+    onScanSuccess(cleanCode);
+
+    // Jeda pemberitahuan agar tidak menumpuk
     setTimeout(() => {
-      onScanSuccess(cleanCode);
       setScanNotif(null);
-      onClose();
-    }, 800);
+    }, 2500);
   };
 
   const handleManualSubmit = (e) => {
@@ -309,6 +310,17 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
                 <Check className="w-5 h-5" />
               </button>
             </form>
+          </div>
+
+          {/* Done Scanning Button */}
+          <div className="pt-2">
+            <button
+              type="button"
+              onClick={() => { stopCamera(); onClose(); }}
+              className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-black text-xs py-3 rounded-2xl border border-slate-300 transition-all cursor-pointer"
+            >
+              SELESAI SCAN (TUTUP KAMERA)
+            </button>
           </div>
 
         </div>

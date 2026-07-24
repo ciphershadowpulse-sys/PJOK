@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Check, CheckCircle2, UserCheck, Search, Camera, MapPin, QrCode, Save, AlertCircle, RefreshCw, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Check, CheckCircle2, UserCheck, Search, Camera, MapPin, QrCode, Save, AlertCircle, RefreshCw, MessageSquare, Users } from 'lucide-react';
 import { getSiswaByKelas, getAbsensiRecord, saveAbsensiBatch } from '../services/storage';
 import QRScannerModal from '../components/QRScannerModal';
 
@@ -14,6 +14,8 @@ const STATUS_OPTIONS = [
 export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
   const [siswaList, setSiswaList] = useState([]);
   const [attendanceData, setAttendanceData] = useState({}); // { [siswaId]: { status, keterangan } }
+  const [scannedMap, setScannedMap] = useState({}); // { [siswaId]: true }
+  const [viewMode, setViewMode] = useState('scanned_only'); // 'scanned_only' | 'unscanned' | 'all'
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -37,14 +39,25 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
         // Load existing saved records for today
         const existing = await getAbsensiRecord(jadwal.id, tanggalStr);
         const map = {};
+        const initialScannedMap = {};
+
         students.forEach(s => {
           const rec = existing.find(e => e.siswa_id === s.id);
-          map[s.id] = {
-            status: rec ? rec.status : 'Hadir',
-            keterangan: rec ? rec.keterangan : ''
-          };
+          if (rec) {
+            initialScannedMap[s.id] = true;
+            map[s.id] = {
+              status: rec.status,
+              keterangan: rec.keterangan || ''
+            };
+          } else {
+            map[s.id] = {
+              status: 'Hadir',
+              keterangan: ''
+            };
+          }
         });
         setAttendanceData(map);
+        setScannedMap(initialScannedMap);
 
         if (existing.length > 0 && existing[0].foto_kegiatan) {
           setPhotoData(existing[0].foto_kegiatan);
@@ -63,15 +76,19 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
 
   // Bulk action "Semua Hadir"
   const handleSemuaHadir = () => {
-    const updated = { ...attendanceData };
+    const updatedAttendance = { ...attendanceData };
+    const updatedScanned = { ...scannedMap };
     siswaList.forEach(s => {
-      updated[s.id] = { ...updated[s.id], status: 'Hadir' };
+      updatedAttendance[s.id] = { ...updatedAttendance[s.id], status: 'Hadir' };
+      updatedScanned[s.id] = true;
     });
-    setAttendanceData(updated);
+    setAttendanceData(updatedAttendance);
+    setScannedMap(updatedScanned);
   };
 
-  // Change individual student status
+  // Change individual student status & mark as scanned/processed
   const handleStatusChange = (siswaId, newStatus) => {
+    setScannedMap(prev => ({ ...prev, [siswaId]: true }));
     setAttendanceData(prev => ({
       ...prev,
       [siswaId]: {
@@ -94,7 +111,7 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
 
   // Handle Photo Upload
   const handlePhotoCapture = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -127,8 +144,8 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
     );
   };
 
-  // Handle QR Code or NIS/NISN scan match
-  const handleQrCodeScanned = (scannedText) => {
+  // Handle QR Code or NIS/NISN scan match & Auto-save to Supabase
+  const handleQrCodeScanned = async (scannedText) => {
     const cleanScanned = String(scannedText).trim().toLowerCase();
     const digitsOnly = cleanScanned.replace(/[^0-9]/g, '');
 
@@ -143,33 +160,78 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
         return true;
       }
 
+      // Match "qr-1001"
+      if (cleanScanned === `qr-${sNis}`) return true;
+
       // Smart digit extraction match
       if (digitsOnly && digitsOnly.length >= 3) {
-        if (sNis && (sNis === digitsOnly || digitsOnly.includes(sNis) || sNis.includes(digitsOnly))) return true;
-        if (sNisn && (sNisn === digitsOnly || digitsOnly.includes(sNisn) || sNisn.includes(digitsOnly))) return true;
-        if (sQr && (sQr === digitsOnly || digitsOnly.includes(sQr) || sQr.includes(digitsOnly))) return true;
+        if (sNis && (sNis === digitsOnly || digitsOnly === sNis)) return true;
+        if (sNisn && (sNisn === digitsOnly || digitsOnly === sNisn)) return true;
+        if (sQr && sQr.includes(digitsOnly)) return true;
       }
 
       return false;
     });
 
     if (found) {
-      handleStatusChange(found.id, 'Hadir');
-      alert(`✅ Siswa ${found.nama_siswa} (NIS: ${found.nis}) berhasil di-absensi HADIR!`);
+      // 1. Mark as scanned & update local state
+      setScannedMap(prev => ({ ...prev, [found.id]: true }));
+      setAttendanceData(prev => ({
+        ...prev,
+        [found.id]: {
+          status: 'Hadir',
+          keterangan: prev[found.id]?.keterangan || 'Hadir via Scan QR'
+        }
+      }));
+
+      // 2. Auto-save directly to Supabase database so scan is instantly stored
+      try {
+        const singleRecord = [{
+          siswa_id: found.id,
+          status: 'Hadir',
+          keterangan: attendanceData[found.id]?.keterangan || 'Hadir via Scan QR'
+        }];
+
+        await saveAbsensiBatch({
+          jadwalId: jadwal.id,
+          tanggal: tanggalStr,
+          records: singleRecord,
+          photoData,
+          gpsLocation,
+          userId: user?.id || 'guru'
+        });
+
+        const okMsg = `🎉 ${found.nama_siswa} (NIS: ${found.nis}) HADIR & Tersimpan ke DB!`;
+        setSuccessMsg(okMsg);
+        setTimeout(() => setSuccessMsg(''), 5000);
+      } catch (errSave) {
+        console.warn('Auto save note:', errSave);
+        setSuccessMsg(`✅ ${found.nama_siswa} HADIR (Tersimpan Lokal)`);
+        setTimeout(() => setSuccessMsg(''), 5000);
+      }
     } else {
-      alert(`⚠️ Hasil Scan [${scannedText}] tidak cocok dengan data NIS/NISN siswa mana pun di kelas ${jadwal.nama_kelas || ''}.`);
+      setSuccessMsg(`⚠️ Result [${scannedText}] tidak cocok dengan NIS/QR siswa mana pun.`);
+      setTimeout(() => setSuccessMsg(''), 5000);
     }
   };
 
-  // Save Attendance Record
+  // Save Attendance Record for all scanned/processed students
   const handleSave = async () => {
     setSaving(true);
     setSuccessMsg('');
     try {
-      const records = Object.keys(attendanceData).map(siswaId => ({
+      const recordsToSaveIds = Object.keys(scannedMap).filter(id => scannedMap[id]);
+
+      if (recordsToSaveIds.length === 0) {
+        alert('Belum ada siswa yang di-scan atau diabsen.');
+        setSaving(false);
+        return;
+      }
+
+      const records = recordsToSaveIds.map(siswaId => ({
         siswa_id: siswaId,
-        status: attendanceData[siswaId].status,
-        keterangan: attendanceData[siswaId].keterangan
+        status: attendanceData[siswaId]?.status || 'Hadir',
+        keterangan: attendanceData[siswaId]?.keterangan || ''
       }));
 
       await saveAbsensiBatch({
@@ -181,7 +243,7 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
         userId: user.id
       });
 
-      setSuccessMsg('Data absensi berhasil disimpan!');
+      setSuccessMsg(`Berhasil menyimpan ${records.length} data absensi siswa ke Supabase!`);
       setTimeout(() => setSuccessMsg(''), 4000);
     } catch (err) {
       alert('Gagal menyimpan absensi: ' + err.message);
@@ -190,20 +252,31 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
     }
   };
 
-  // Filtered Siswa
-  const filteredSiswa = siswaList.filter(s =>
-    s.nama_siswa.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.nis.includes(searchQuery)
-  );
+  // Counts & Filtered list based on viewMode
+  const scannedSiswaIds = Object.keys(scannedMap).filter(id => scannedMap[id]);
+  const scannedSiswaCount = scannedSiswaIds.length;
+  const unscannedSiswaCount = siswaList.length - scannedSiswaCount;
 
-  // Count summaries
   const counts = {
-    Hadir: Object.values(attendanceData).filter(v => v.status === 'Hadir').length,
-    Sakit: Object.values(attendanceData).filter(v => v.status === 'Sakit').length,
-    Izin: Object.values(attendanceData).filter(v => v.status === 'Izin').length,
-    Alpa: Object.values(attendanceData).filter(v => v.status === 'Alpa').length,
-    Terlambat: Object.values(attendanceData).filter(v => v.status === 'Terlambat').length,
+    Hadir: scannedSiswaIds.filter(id => attendanceData[id]?.status === 'Hadir').length,
+    Sakit: scannedSiswaIds.filter(id => attendanceData[id]?.status === 'Sakit').length,
+    Izin: scannedSiswaIds.filter(id => attendanceData[id]?.status === 'Izin').length,
+    Alpa: scannedSiswaIds.filter(id => attendanceData[id]?.status === 'Alpa').length,
+    Terlambat: scannedSiswaIds.filter(id => attendanceData[id]?.status === 'Terlambat').length,
   };
+
+  const filteredSiswa = siswaList.filter(s => {
+    const matchesSearch =
+      s.nama_siswa.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      s.nis.includes(searchQuery);
+
+    if (!matchesSearch) return false;
+
+    const isScanned = Boolean(scannedMap[s.id]);
+    if (viewMode === 'scanned_only') return isScanned;
+    if (viewMode === 'unscanned') return !isScanned;
+    return true; // 'all'
+  });
 
   return (
     <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6 pb-24">
@@ -241,7 +314,7 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
           {/* Quick All Present Button */}
           <button
             onClick={handleSemuaHadir}
-            className="py-3 px-5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-extrabold text-sm rounded-2xl shadow-lg shadow-emerald-500/30 flex items-center justify-center space-x-2 transition-all active:scale-95"
+            className="py-3 px-5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-extrabold text-sm rounded-2xl shadow-lg shadow-emerald-500/30 flex items-center justify-center space-x-2 transition-all active:scale-95 cursor-pointer"
           >
             <UserCheck className="w-5 h-5" />
             <span>SET SEMUA HADIR</span>
@@ -303,7 +376,7 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
               type="button"
               onClick={handleGetLocation}
               disabled={gettingGps}
-              className="bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all"
+              className="bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer"
             >
               <MapPin className="w-4 h-4 text-sky-400" />
               <span>{gettingGps ? 'Memproses GPS...' : 'Tag Lokasi GPS'}</span>
@@ -327,19 +400,63 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari nama siswa atau NIS..."
+            placeholder="Cari siswa ter-scan (Nama atau NIS)..."
             className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm"
           />
         </div>
 
         <button
           onClick={() => setShowQrModal(true)}
-          className="p-3 bg-slate-900 hover:bg-slate-800 text-emerald-400 rounded-2xl shadow-sm border border-slate-800 flex items-center space-x-1.5 transition-all"
+          className="p-3 bg-slate-900 hover:bg-slate-800 text-emerald-400 rounded-2xl shadow-sm border border-slate-800 flex items-center space-x-1.5 transition-all cursor-pointer"
           title="Scan QR Code Kartu Siswa"
         >
           <QrCode className="w-5 h-5" />
-          <span className="text-xs font-bold text-white hidden sm:inline">Scan QR</span>
+          <span className="text-xs font-bold text-white hidden sm:inline">Scan QR Code</span>
         </button>
+      </div>
+
+      {/* Title Header & View Mode Toggles for Students List */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+        <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider flex items-center space-x-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+          <span>Daftar Siswa Ter-Scan ({scannedSiswaCount} dari {siswaList.length})</span>
+        </h3>
+
+        <div className="flex items-center space-x-1 bg-slate-200/70 p-1 rounded-2xl text-[11px] font-extrabold">
+          <button
+            type="button"
+            onClick={() => setViewMode('scanned_only')}
+            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+              viewMode === 'scanned_only'
+                ? 'bg-slate-900 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Selesai Scan ({scannedSiswaCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('unscanned')}
+            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+              viewMode === 'unscanned'
+                ? 'bg-slate-900 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Belum Scan ({unscannedSiswaCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('all')}
+            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+              viewMode === 'all'
+                ? 'bg-slate-900 text-white shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+            }`}
+          >
+            Semua Siswa ({siswaList.length})
+          </button>
+        </div>
       </div>
 
       {/* Student List & Touch-Friendly Status Buttons */}
@@ -348,34 +465,70 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
           <RefreshCw className="w-8 h-8 animate-spin mx-auto text-emerald-500 mb-2" />
           <p className="text-sm font-semibold">Memuat daftar siswa kelas...</p>
         </div>
+      ) : filteredSiswa.length === 0 ? (
+        <div className="bg-white p-10 rounded-3xl text-center border-2 border-dashed border-slate-200 space-y-3">
+          <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto border border-emerald-200">
+            <QrCode className="w-8 h-8" />
+          </div>
+          <h3 className="text-base font-extrabold text-slate-800">
+            Belum Ada Siswa Di-Scan
+          </h3>
+          <p className="text-xs text-slate-500 max-w-sm mx-auto font-medium">
+            Silakan scan QR Code atau NIS siswa. Nama dan keterangan siswa yang sudah di-scan akan otomatis muncul di bawah ini.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowQrModal(true)}
+            className="mt-2 inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-5 py-3 rounded-2xl shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+          >
+            <QrCode className="w-4 h-4" />
+            <span>Buka Kamera Scan QR Code</span>
+          </button>
+        </div>
       ) : (
         <div className="space-y-3">
           {filteredSiswa.map((siswa, idx) => {
             const currentStatus = attendanceData[siswa.id]?.status || 'Hadir';
             const currentNote = attendanceData[siswa.id]?.keterangan || '';
+            const isScanned = Boolean(scannedMap[siswa.id]);
 
             return (
               <div
                 key={siswa.id}
-                className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 shadow-md hover:shadow-lg transition-all space-y-3"
+                className={`bg-white border rounded-3xl p-4 sm:p-5 shadow-md hover:shadow-lg transition-all space-y-3 ${
+                  isScanned ? 'border-emerald-300 ring-1 ring-emerald-500/20' : 'border-slate-200 opacity-90'
+                }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <span className="w-8 h-8 rounded-full bg-slate-100 text-slate-700 font-extrabold text-xs flex items-center justify-center border border-slate-200">
+                    <span className={`w-8 h-8 rounded-full font-extrabold text-xs flex items-center justify-center border ${
+                      isScanned ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-slate-100 text-slate-700 border-slate-200'
+                    }`}>
                       {idx + 1}
                     </span>
                     <div>
-                      <h4 className="text-base font-extrabold text-slate-900 leading-tight">
-                        {siswa.nama_siswa}
-                      </h4>
-                      <p className="text-xs text-slate-500 font-medium">
+                      <div className="flex items-center space-x-2">
+                        <h4 className="text-base font-extrabold text-slate-900 leading-tight">
+                          {siswa.nama_siswa}
+                        </h4>
+                        {isScanned ? (
+                          <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-700 border border-emerald-300 text-[10px] font-extrabold rounded-full">
+                            ✓ Di-Scan
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 bg-amber-500/10 text-amber-700 border border-amber-300 text-[10px] font-extrabold rounded-full">
+                            Belum Di-Scan
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 font-medium mt-0.5">
                         NIS: {siswa.nis} | Gender: <span className="font-bold">{siswa.jenis_kelamin}</span>
                       </p>
                     </div>
                   </div>
 
                   <span className="text-xs font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
-                    {siswa.qr_code || 'QR-100'}
+                    {siswa.qr_code || `QR-${siswa.nis}`}
                   </span>
                 </div>
 
@@ -388,7 +541,7 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
                         key={opt.key}
                         type="button"
                         onClick={() => handleStatusChange(siswa.id, opt.key)}
-                        className={`py-3 sm:py-3.5 px-1 rounded-2xl text-xs font-extrabold transition-all border flex flex-col items-center justify-center space-y-1 active:scale-95 ${
+                        className={`py-3 sm:py-3.5 px-1 rounded-2xl text-xs font-extrabold transition-all border flex flex-col items-center justify-center space-y-1 active:scale-95 cursor-pointer ${
                           isSelected
                             ? opt.color + ' ring-2 ring-slate-900/10'
                             : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
@@ -421,7 +574,7 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
       <div className="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 p-4 shadow-2xl">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
           <div className="text-white text-xs hidden sm:block">
-            <span className="font-bold text-emerald-400">{siswaList.length} Siswa</span> terdaftar | Status tersimpan lokal & auto-sync.
+            <span className="font-bold text-emerald-400">{scannedSiswaCount} dari {siswaList.length} Siswa</span> ter-scan & tersimpan ke Supabase.
           </div>
 
           {successMsg && (
@@ -434,7 +587,7 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full sm:w-auto py-3.5 px-8 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-sm rounded-2xl shadow-xl shadow-emerald-600/40 flex items-center justify-center space-x-2 transition-all disabled:opacity-50"
+            className="w-full sm:w-auto py-3.5 px-8 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-sm rounded-2xl shadow-xl shadow-emerald-600/40 flex items-center justify-center space-x-2 transition-all disabled:opacity-50 cursor-pointer"
           >
             {saving ? (
               <span>Menyimpan...</span>
