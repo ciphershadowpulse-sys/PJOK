@@ -182,38 +182,62 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
     const cleanScanned = String(scannedText).trim().toLowerCase();
     const digitsOnly = cleanScanned.replace(/[^0-9]/g, '');
 
-    const found = siswaList.find(s => {
+    // 1. Cari siswa pada siswaList kelas aktif
+    let found = siswaList.find(s => {
       const sNis = String(s.nis || '').trim().toLowerCase();
       const sNisn = String(s.nisn || '').trim().toLowerCase();
       const sQr = String(s.qr_code || '').trim().toLowerCase();
       const sId = String(s.id || '').trim().toLowerCase();
 
-      // 1. Direct exact matches
-      if (sQr === cleanScanned || sNis === cleanScanned || sNisn === cleanScanned || sId === cleanScanned) {
-        return true;
-      }
-
-      // 2. Format matches like "qr-1001" or "qr-3163288603"
+      if (sQr === cleanScanned || sNis === cleanScanned || sNisn === cleanScanned || sId === cleanScanned) return true;
       if (cleanScanned === `qr-${sNis}` || cleanScanned === `qr-${sNisn}`) return true;
-
-      // 3. Digit sequence extraction match
       if (digitsOnly && digitsOnly.length >= 3) {
-        if (sNis && (sNis === digitsOnly || digitsOnly === sNis)) return true;
-        if (sNisn && (sNisn === digitsOnly || digitsOnly === sNisn)) return true;
+        if (sNis === digitsOnly || sNisn === digitsOnly) return true;
         if (sQr && sQr.includes(digitsOnly)) return true;
       }
-
-      // 4. Substring / contains match
       if (sQr && (sQr.includes(cleanScanned) || cleanScanned.includes(sQr))) return true;
-
       return false;
     });
+
+    // 2. Jika tidak ditemukan di kelas ini, cari dari seluruh database sekolah (getAllSiswa)
+    if (!found) {
+      try {
+        const { getAllSiswa } = await import('../services/storage');
+        const allStudents = await getAllSiswa();
+        const foundInAll = allStudents.find(s => {
+          const sNis = String(s.nis || '').trim().toLowerCase();
+          const sNisn = String(s.nisn || '').trim().toLowerCase();
+          const sQr = String(s.qr_code || '').trim().toLowerCase();
+          const sId = String(s.id || '').trim().toLowerCase();
+
+          if (sQr === cleanScanned || sNis === cleanScanned || sNisn === cleanScanned || sId === cleanScanned) return true;
+          if (cleanScanned === `qr-${sNis}` || cleanScanned === `qr-${sNisn}`) return true;
+          if (digitsOnly && digitsOnly.length >= 3) {
+            if (sNis === digitsOnly || sNisn === digitsOnly) return true;
+            if (sQr && sQr.includes(digitsOnly)) return true;
+          }
+          if (sQr && (sQr.includes(cleanScanned) || cleanScanned.includes(sQr))) return true;
+          return false;
+        });
+
+        if (foundInAll) {
+          found = foundInAll;
+          // Tambahkan ke siswaList agar tampil secara instan di daftar siswa ter-scan
+          setSiswaList(prev => {
+            if (prev.some(x => x.id === found.id)) return prev;
+            return [...prev, found];
+          });
+        }
+      } catch (e) {
+        console.warn('Fallback search error:', e);
+      }
+    }
 
     if (found) {
       // Play Audio Beep Sound Effect
       playSuccessBeep();
 
-      // 1. Mark as scanned & update local state
+      // Mark as scanned & update attendance status
       setScannedMap(prev => ({ ...prev, [found.id]: true }));
       setAttendanceData(prev => ({
         ...prev,
@@ -223,12 +247,12 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
         }
       }));
 
-      // 2. Auto-save directly to Supabase database so scan is instantly stored
+      // Directly save to Supabase Database
       try {
         const singleRecord = [{
           siswa_id: found.id,
           status: 'Hadir',
-          keterangan: attendanceData[found.id]?.keterangan || 'Hadir via Scan QR'
+          keterangan: 'Hadir via Scan QR'
         }];
 
         await saveAbsensiBatch({
@@ -240,16 +264,16 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
           userId: user?.id || 'guru'
         });
 
-        const okMsg = `🎉 ${found.nama_siswa} (NIS: ${found.nis || '-'}) HADIR & Tersimpan ke DB!`;
+        const okMsg = `🎉 ${found.nama_siswa} (NIS: ${found.nis || '-'}) HADIR & Tersimpan di DB!`;
         setSuccessMsg(okMsg);
         setTimeout(() => setSuccessMsg(''), 5000);
       } catch (errSave) {
-        console.warn('Auto save note:', errSave);
-        setSuccessMsg(`✅ ${found.nama_siswa} HADIR (Tersimpan Lokal)`);
+        console.warn('Auto save error:', errSave);
+        setSuccessMsg(`✅ ${found.nama_siswa} HADIR (Tersimpan Lokal: ${errSave.message})`);
         setTimeout(() => setSuccessMsg(''), 5000);
       }
     } else {
-      setSuccessMsg(`⚠️ Result [${scannedText}] tidak cocok dengan NIS/QR siswa mana pun.`);
+      setSuccessMsg(`⚠️ Result [${scannedText}] tidak cocok dengan NIS/NISN/QR siswa mana pun.`);
       setTimeout(() => setSuccessMsg(''), 5000);
     }
   };

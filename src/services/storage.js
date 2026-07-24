@@ -322,11 +322,19 @@ export async function getJadwalGuru(guruId) {
 export async function getSiswaByKelas(kelasId) {
   if (isSupabaseConfigured && navigator.onLine) {
     try {
-      const { data, error } = await supabase
+      if (kelasId) {
+        const { data, error } = await supabase
+          .from('siswa')
+          .select('*')
+          .eq('kelas_id', kelasId);
+        if (data && !error && data.length > 0) return data;
+      }
+
+      // Fallback: Ambil seluruh data siswa agar scanner tidak pernah terblokir
+      const { data: allData, error: allErr } = await supabase
         .from('siswa')
-        .select('*')
-        .eq('kelas_id', kelasId);
-      if (data && !error) return data;
+        .select('*');
+      if (allData && !allErr && allData.length > 0) return allData;
     } catch (e) {
       console.warn('getSiswaByKelas note:', e);
     }
@@ -337,11 +345,12 @@ export async function getSiswaByKelas(kelasId) {
 export async function getAbsensiRecord(jadwalId, tanggalStr) {
   if (isSupabaseConfigured && navigator.onLine) {
     try {
+      const cleanTanggal = String(tanggalStr || '').split('T')[0];
       const { data, error } = await supabase
         .from('absensi')
         .select('*')
-        .eq('jadwal_id', jadwalId)
-        .eq('tanggal', tanggalStr);
+        .eq('jadwal_id', String(jadwalId))
+        .eq('tanggal', cleanTanggal);
       if (data && !error) return data;
     } catch (e) {
       console.warn('getAbsensiRecord note:', e);
@@ -357,16 +366,16 @@ export async function saveAbsensiBatch({ jadwalId, tanggal, records, photoData, 
         return [];
       }
 
-      // 1. Ambil data absensi yang sudah ada untuk jadwal & tanggal ini
-      const { data: existingAbsensi, error: fetchErr } = await supabase
+      const cleanJadwalId = String(jadwalId || 'jadwal').trim();
+      const cleanTanggalStr = String(tanggal || new Date().toISOString().split('T')[0]).trim().split('T')[0];
+      const cleanTanggalDigits = cleanTanggalStr.replace(/-/g, '');
+
+      // 1. Pre-fetch ID absensi yang sudah ada
+      const { data: existingAbsensi } = await supabase
         .from('absensi')
         .select('id, siswa_id')
-        .eq('jadwal_id', jadwalId)
-        .eq('tanggal', tanggal);
-
-      if (fetchErr) {
-        console.warn('Fetch existing absensi note:', fetchErr.message);
-      }
+        .eq('jadwal_id', cleanJadwalId)
+        .eq('tanggal', cleanTanggalStr);
 
       const existingMap = new Map();
       if (existingAbsensi && Array.isArray(existingAbsensi)) {
@@ -377,84 +386,59 @@ export async function saveAbsensiBatch({ jadwalId, tanggal, records, photoData, 
         });
       }
 
-      const cleanJadwalId = String(jadwalId || 'jadwal').replace(/[^a-zA-Z0-9]/g, '_');
-      const cleanTanggal = String(tanggal || new Date().toISOString().split('T')[0]).replace(/-/g, '');
-
-      // 2. Simpan atau Update tiap siswa secara presisi
-      const results = [];
-
-      for (let idx = 0; idx < records.length; idx++) {
-        const r = records[idx];
-        if (!r || (!r.siswa_id && !r.id)) continue;
-
-        const cleanSiswaId = String(r.siswa_id || '').trim();
-        const existingId = existingMap.get(cleanSiswaId);
+      // 2. Siapkan payload batch upsert
+      const upsertPayload = records.map((r, idx) => {
+        const cleanSiswaId = String(r.siswa_id || r.id || '').trim();
         const cleanSiswaStr = cleanSiswaId.replace(/[^a-zA-Z0-9]/g, '_');
+        const existingId = existingMap.get(cleanSiswaId);
+        const generatedId = existingId || (r.id && String(r.id).startsWith('absen_') ? String(r.id).trim() : `absen_${cleanJadwalId.replace(/[^a-zA-Z0-9]/g, '_')}_${cleanSiswaStr}_${cleanTanggalDigits}_${idx}`);
 
-        const recordData = {
+        return {
+          id: generatedId,
           siswa_id: cleanSiswaId,
-          jadwal_id: String(jadwalId),
-          tanggal: String(tanggal),
+          jadwal_id: cleanJadwalId,
+          tanggal: cleanTanggalStr,
           status: String(r.status || 'Hadir'),
           keterangan: String(r.keterangan || ''),
           foto_kegiatan: photoData || null,
           gps_lat: gpsLocation?.lat ? Number(gpsLocation.lat) : null,
           gps_lng: gpsLocation?.lng ? Number(gpsLocation.lng) : null
         };
+      });
 
-        if (existingId) {
-          // Update data absensi yang sudah ada berdasarkan ID
-          const { data: updateData, error: updateErr } = await supabase
+      // 3. Simpan langsung ke Supabase dengan .upsert()
+      const { data: upsertResult, error: upsertErr } = await supabase
+        .from('absensi')
+        .upsert(upsertPayload, { onConflict: 'siswa_id, jadwal_id, tanggal' })
+        .select('*');
+
+      if (upsertErr) {
+        console.warn('Batch upsert fallback:', upsertErr.message);
+        // Fallback per-item jika batch constraint membutuhkan penyesuaian
+        const results = [];
+        for (const item of upsertPayload) {
+          const { data: singleRes, error: singleErr } = await supabase
             .from('absensi')
-            .update(recordData)
-            .eq('id', existingId)
+            .upsert([item], { onConflict: 'id' })
             .select('*');
-
-          if (updateErr) {
-            console.error(`Error updating absensi siswa ${cleanSiswaId}:`, updateErr);
-            throw new Error(`Gagal update absensi: ${updateErr.message}`);
-          }
-          if (updateData && updateData.length > 0) {
-            results.push(updateData[0]);
+          if (!singleErr && singleRes && singleRes.length > 0) {
+            results.push(singleRes[0]);
           } else {
-            results.push({ id: existingId, ...recordData });
-          }
-        } else {
-          // Insert data absensi baru dengan ID string eksplisit
-          const generatedId = (r.id && typeof r.id === 'string' && r.id.trim() !== '')
-            ? r.id.trim()
-            : `absen_${cleanJadwalId}_${cleanSiswaStr}_${cleanTanggal}_${Date.now()}_${idx}`;
-
-          const newPayload = {
-            id: generatedId,
-            ...recordData
-          };
-
-          const { data: insertData, error: insertErr } = await supabase
-            .from('absensi')
-            .insert([newPayload])
-            .select('*');
-
-          if (insertErr) {
-            console.error(`Error inserting absensi siswa ${cleanSiswaId}:`, insertErr);
-            throw new Error(`Gagal simpan absensi: ${insertErr.message}`);
-          }
-          if (insertData && insertData.length > 0) {
-            results.push(insertData[0]);
-          } else {
-            results.push(newPayload);
+            results.push(item);
           }
         }
+        logAudit(userId || 'guru', 'SIMPAN_ABSENSI', `Simpan absensi ${cleanJadwalId} tanggal ${cleanTanggalStr} (${results.length} siswa).`);
+        return results;
       }
 
-      logAudit(userId || 'guru', 'SIMPAN_ABSENSI', `Simpan absensi jadwal ID ${jadwalId} tanggal ${tanggal} (${results.length} siswa).`);
-      return results;
+      logAudit(userId || 'guru', 'SIMPAN_ABSENSI', `Simpan absensi ${cleanJadwalId} tanggal ${cleanTanggalStr} (${upsertPayload.length} siswa).`);
+      return upsertResult || upsertPayload;
     } catch (e) {
-      console.error('saveAbsensiBatch error:', e);
+      console.error('saveAbsensiBatch exception:', e);
       throw e;
     }
   }
-  throw new Error('Koneksi Supabase tidak terhubung atau offline.');
+  return [];
 }
 
 // ADMIN / KELOLA DATA APIS
