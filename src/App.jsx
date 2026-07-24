@@ -28,12 +28,7 @@ export default function App() {
         const parsedUser = JSON.parse(savedUser);
         if (parsedUser && parsedUser.id) {
           setUser(parsedUser);
-          if (savedJadwal) {
-            try {
-              setSelectedJadwal(JSON.parse(savedJadwal));
-            } catch (e) {}
-          }
-          setCurrentView(savedView);
+          setCurrentView('dashboard'); // Kembali ke halaman dashboard saat refresh
         }
       } catch (e) {
         console.warn('LocalStorage restore note:', e);

@@ -634,13 +634,13 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
           <Info className="w-4 h-4 flex-shrink-0 text-current" />
           <span>
             {viewMode === 'scanned_only' && (
-              <><strong>Fungsi & Kegunaan Tab Selesai Scan:</strong> Menampilkan <strong>{scannedSiswaCount} siswa</strong> yang sudah berhasil di-scan atau diabsen. Gunakan tab ini untuk meninjau status dan menambah catatan khusus.</>
+              <><strong>Fungsi & Kegunaan Tab Selesai Scan:</strong> Menampilkan siswa yang sudah berhasil di-scan atau diabsen. Gunakan tab ini untuk meninjau status dan menambah catatan khusus.</>
             )}
             {viewMode === 'unscanned' && (
-              <><strong>Fungsi & Kegunaan Tab Belum Scan:</strong> Menampilkan sisa <strong>{unscannedSiswaCount} siswa</strong> yang belum scan QR code. Gunakan tab ini untuk memandu siswa scan QR atau memberi status manual jika siswa tidak membawa kartu.</>
+              <><strong>Fungsi & Kegunaan Tab Belum Scan:</strong> Menampilkan sisa siswa yang belum scan QR code. Gunakan tab ini untuk memandu siswa scan QR atau memberi status manual jika siswa tidak membawa kartu.</>
             )}
             {viewMode === 'all' && (
-              <><strong>Fungsi & Kegunaan Tab Semua Siswa:</strong> Menampilkan seluruh <strong>{siswaList.length} siswa</strong> kelas ini secara lengkap (yang sudah di-scan maupun yang belum) untuk peninjauan menyeluruh.</>
+              <><strong>Fungsi & Kegunaan Tab Semua Siswa:</strong> Menampilkan seluruh siswa kelas ini secara lengkap untuk peninjauan menyeluruh.</>
             )}
           </span>
         </div>
