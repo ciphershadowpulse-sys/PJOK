@@ -147,10 +147,12 @@ export default function AdminDashboard({ user }) {
   const downloadSiswaTemplate = () => {
     try {
       const templateData = [
-        { 'NIS': '1013', 'Nama Siswa': 'Ahmad Zaky Pratama', 'Nama Kelas': '5A', 'Jenis Kelamin (L/P)': 'L' },
-        { 'NIS': '1014', 'Nama Siswa': 'Nabila Putri Setiawan', 'Nama Kelas': '5A', 'Jenis Kelamin (L/P)': 'P' },
-        { 'NIS': '1015', 'Nama Siswa': 'Bagus Kurniawan', 'Nama Kelas': '5B', 'Jenis Kelamin (L/P)': 'L' },
-        { 'NIS': '1016', 'Nama Siswa': 'Dewi Anggraini', 'Nama Kelas': '6A', 'Jenis Kelamin (L/P)': 'P' }
+        { 'NIS': '1001', 'Nama Siswa': 'Ahmad Rizky Pratama', 'Nama Kelas': '5A', 'Jenis Kelamin (L/P)': 'L', 'QR Code': 'QR-1001' },
+        { 'NIS': '1002', 'Nama Siswa': 'Anisa Rahmawati', 'Nama Kelas': '5A', 'Jenis Kelamin (L/P)': 'P', 'QR Code': 'QR-1002' },
+        { 'NIS': '1003', 'Nama Siswa': 'Bagus Setiawan', 'Nama Kelas': '5B', 'Jenis Kelamin (L/P)': 'L', 'QR Code': 'QR-1003' },
+        { 'NIS': '1004', 'Nama Siswa': 'Citra Dewi Permata', 'Nama Kelas': '5B', 'Jenis Kelamin (L/P)': 'P', 'QR Code': 'QR-1004' },
+        { 'NIS': '1005', 'Nama Siswa': 'Daffa Al-Farizi', 'Nama Kelas': '6A', 'Jenis Kelamin (L/P)': 'L', 'QR Code': 'QR-1005' },
+        { 'NIS': '1006', 'Nama Siswa': 'Eka Putri Lestari', 'Nama Kelas': '6A', 'Jenis Kelamin (L/P)': 'P', 'QR Code': 'QR-1006' }
       ];
 
       const worksheet = XLSX.utils.json_to_sheet(templateData);
@@ -160,11 +162,12 @@ export default function AdminDashboard({ user }) {
         { wch: 14 }, // NIS
         { wch: 30 }, // Nama Siswa
         { wch: 15 }, // Nama Kelas
-        { wch: 24 }  // Jenis Kelamin (L/P)
+        { wch: 22 }, // Jenis Kelamin (L/P)
+        { wch: 18 }  // QR Code
       ];
 
       const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, 'Template Siswa');
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Data Siswa');
       XLSX.writeFile(workbook, 'Template_Import_Siswa_PJOK.xlsx');
     } catch (err) {
       alert('Gagal mendownload template Excel: ' + err.message);
@@ -184,12 +187,17 @@ export default function AdminDashboard({ user }) {
         
         const data = new Uint8Array(evt.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
+        
+        if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
+          throw new Error('File Excel tidak memiliki sheet yang valid.');
+        }
+
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
         const rawData = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
         if (!rawData || rawData.length === 0) {
-          throw new Error('File Excel kosong atau format tabel tidak sesuai.');
+          throw new Error('File Excel kosong atau format data tidak ditemukan.');
         }
 
         const currentKelasList = [...kelas];
@@ -209,8 +217,8 @@ export default function AdminDashboard({ user }) {
         for (let i = 0; i < rawData.length; i++) {
           const row = rawData[i];
 
-          // 1. Ekstrak NIS
-          let rawNis = row['NIS'] ?? row['nis'] ?? row['Nomor Induk'] ?? row['No Induk'] ?? row['NISN'];
+          // 1. Ekstrak NIS / NISN
+          let rawNis = row['NIS'] ?? row['nis'] ?? row['Nis'] ?? row['NISN'] ?? row['nisn'] ?? row['Nomor Induk'] ?? row['No Induk'] ?? row['No. Induk'];
           if (rawNis === undefined || rawNis === '') {
             for (const k of Object.keys(row)) {
               if (/nis|induk/i.test(k)) {
@@ -222,7 +230,7 @@ export default function AdminDashboard({ user }) {
           const nis = String(rawNis ?? '').replace(/\.0$/, '').trim();
 
           // 2. Ekstrak Nama Siswa
-          let rawNama = row['Nama Siswa'] ?? row['nama_siswa'] ?? row['Nama Lengkap'] ?? row['Nama'] ?? row['NAMA SISWA'];
+          let rawNama = row['Nama Siswa'] ?? row['nama_siswa'] ?? row['Nama'] ?? row['NAMA SISWA'] ?? row['Nama Lengkap'];
           if (!rawNama) {
             for (const k of Object.keys(row)) {
               if (/nama/i.test(k)) {
@@ -246,7 +254,7 @@ export default function AdminDashboard({ user }) {
           const namaKelas = String(rawKelas ?? '').trim();
 
           // 4. Ekstrak Gender
-          let rawGender = row['Jenis Kelamin (L/P)'] ?? row['Jenis Kelamin'] ?? row['jenis_kelamin'] ?? row['JK'] ?? row['Gender'] ?? 'L';
+          let rawGender = row['Jenis Kelamin (L/P)'] ?? row['Jenis Kelamin'] ?? row['jenis_kelamin'] ?? row['JK'] ?? row['Gender'] ?? row['L/P'] ?? 'L';
           if (!rawGender) {
             for (const k of Object.keys(row)) {
               if (/kelamin|jk|gender/i.test(k)) {
@@ -256,7 +264,11 @@ export default function AdminDashboard({ user }) {
             }
           }
           const genderStr = String(rawGender ?? '').trim().toUpperCase();
-          const gender = (genderStr.startsWith('P') || genderStr === 'PEREMPUAN' || genderStr === 'WOMAN') ? 'P' : 'L';
+          const gender = (genderStr.startsWith('P') || genderStr === 'PEREMPUAN' || genderStr === 'WOMAN' || genderStr === 'F') ? 'P' : 'L';
+
+          // 5. Ekstrak QR Code jika ada di file Excel
+          let rawQr = row['QR Code'] ?? row['qr_code'] ?? row['QR'] ?? row['Qr Code'];
+          const customQr = String(rawQr ?? '').trim();
 
           if (!nis || !namaSiswa) continue;
 
@@ -297,12 +309,12 @@ export default function AdminDashboard({ user }) {
             nama_siswa: namaSiswa,
             kelas_id: matchedKelas?.id || null,
             jenis_kelamin: gender,
-            qr_code: `QR-${nis}`
+            qr_code: customQr || `QR-${nis}`
           });
         }
 
         if (toImport.length === 0) {
-          throw new Error('Tidak ada data siswa valid yang ditemukan di file Excel. Pastikan kolom NIS dan Nama Siswa terisi.');
+          throw new Error('Tidak ada data siswa valid. Pastikan kolom NIS dan Nama Siswa terisi dengan benar.');
         }
 
         await addOrUpdateSiswaBatch(toImport);
