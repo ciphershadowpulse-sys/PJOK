@@ -12,6 +12,16 @@ const STATUS_OPTIONS = [
 ];
 
 export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
+  // Resolve activeJadwal from props or localStorage fallback
+  const activeJadwal = jadwal || (() => {
+    try {
+      const saved = localStorage.getItem('pjok_active_jadwal');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  })();
+
   const [siswaList, setSiswaList] = useState([]);
   const [attendanceData, setAttendanceData] = useState({}); // { [siswaId]: { status, keterangan } }
   const [scannedMap, setScannedMap] = useState({}); // { [siswaId]: true }
@@ -31,17 +41,23 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
 
   useEffect(() => {
     async function loadSiswaAndAbsensi() {
-      if (!jadwal || !jadwal.id) return;
+      if (!activeJadwal || !activeJadwal.id) {
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       try {
-        let students = await getSiswaByKelas(jadwal.kelas_id);
-        if (!students || students.length === 0) {
+        let students = await getSiswaByKelas(activeJadwal.kelas_id);
+        if (!students || !Array.isArray(students) || students.length === 0) {
           const { getAllSiswa } = await import('../services/storage');
           students = await getAllSiswa();
         }
 
+        if (!students) students = [];
+
         // 1. Baca cache lokal terlebih dahulu untuk kecepatan dan respon instan saat F5
-        const cacheKey = `pjok_scanned_cache_${jadwal.id}_${tanggalStr}`;
+        const cacheKey = `pjok_scanned_cache_${activeJadwal.id}_${tanggalStr}`;
         const cachedRaw = localStorage.getItem(cacheKey);
         let cachedData = null;
         if (cachedRaw) {
@@ -52,7 +68,7 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
         const initialScannedMap = cachedData?.scannedMap || {};
 
         // 2. Load record absensi yang sudah tersimpan di database Supabase
-        const existing = await getAbsensiRecord(jadwal.id, tanggalStr);
+        const existing = await getAbsensiRecord(activeJadwal.id, tanggalStr);
 
         // 3. Gabungkan seluruh data yang tersimpan di DB
         if (existing && Array.isArray(existing)) {
@@ -115,20 +131,20 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
       }
     }
     loadSiswaAndAbsensi();
-  }, [jadwal, tanggalStr]);
+  }, [activeJadwal?.id, tanggalStr]);
 
   // Simpan cache lokal otomatis saat scannedMap atau attendanceData berubah
   useEffect(() => {
-    if (jadwal && jadwal.id && Object.keys(scannedMap).length > 0) {
+    if (activeJadwal && activeJadwal.id && Object.keys(scannedMap).length > 0) {
       try {
-        const cacheKey = `pjok_scanned_cache_${jadwal.id}_${tanggalStr}`;
+        const cacheKey = `pjok_scanned_cache_${activeJadwal.id}_${tanggalStr}`;
         localStorage.setItem(cacheKey, JSON.stringify({
           scannedMap,
           attendanceData
         }));
       } catch (e) {}
     }
-  }, [scannedMap, attendanceData, jadwal, tanggalStr]);
+  }, [scannedMap, attendanceData, activeJadwal, tanggalStr]);
 
   // Bulk action "Semua Hadir"
   const handleSemuaHadir = () => {
@@ -321,7 +337,7 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
         }];
 
         await saveAbsensiBatch({
-          jadwalId: jadwal.id,
+          jadwalId: activeJadwal?.id || 'jadwal',
           tanggal: tanggalStr,
           records: singleRecord,
           photoData,
@@ -369,7 +385,7 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
       });
 
       await saveAbsensiBatch({
-        jadwalId: jadwal.id,
+        jadwalId: activeJadwal?.id || 'jadwal',
         tanggal: tanggalStr,
         records,
         photoData,
