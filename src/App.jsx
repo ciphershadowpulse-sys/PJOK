@@ -20,12 +20,20 @@ export default function App() {
   useEffect(() => {
     // 1a. Instant restore dari LocalStorage saat refresh halaman
     const savedUser = localStorage.getItem('pjok_user_session');
+    const savedView = localStorage.getItem('pjok_active_view') || 'dashboard';
+    const savedJadwal = localStorage.getItem('pjok_active_jadwal');
+
     if (savedUser) {
       try {
-        const parsed = JSON.parse(savedUser);
-        if (parsed && parsed.id) {
-          setUser(parsed);
-          setCurrentView('dashboard');
+        const parsedUser = JSON.parse(savedUser);
+        if (parsedUser && parsedUser.id) {
+          setUser(parsedUser);
+          if (savedJadwal) {
+            try {
+              setSelectedJadwal(JSON.parse(savedJadwal));
+            } catch (e) {}
+          }
+          setCurrentView(savedView);
         }
       } catch (e) {
         console.warn('LocalStorage restore note:', e);
@@ -48,7 +56,6 @@ export default function App() {
           };
           setUser(userObj);
           localStorage.setItem('pjok_user_session', JSON.stringify(userObj));
-          setCurrentView('dashboard');
         }
       } catch (err) {
         console.warn('Error fetching Supabase auth session:', err);
@@ -66,9 +73,10 @@ export default function App() {
           };
           setUser(userObj);
           localStorage.setItem('pjok_user_session', JSON.stringify(userObj));
-          setCurrentView('dashboard');
         } else if (event === 'SIGNED_OUT') {
           localStorage.removeItem('pjok_user_session');
+          localStorage.removeItem('pjok_active_view');
+          localStorage.removeItem('pjok_active_jadwal');
           setUser(null);
           setCurrentView('login');
         }
@@ -123,20 +131,34 @@ export default function App() {
   const handleLoginSuccess = (userData) => {
     setUser(userData);
     localStorage.setItem('pjok_user_session', JSON.stringify(userData));
+    localStorage.setItem('pjok_active_view', 'dashboard');
     setCurrentView('dashboard');
   };
 
   const handleLogout = async () => {
     await logoutUser();
     localStorage.removeItem('pjok_user_session');
+    localStorage.removeItem('pjok_active_view');
+    localStorage.removeItem('pjok_active_jadwal');
     setUser(null);
     setSelectedJadwal(null);
     setCurrentView('login');
   };
 
+  const handleNavigate = (view) => {
+    if (user) {
+      setCurrentView(view);
+      localStorage.setItem('pjok_active_view', view);
+    } else {
+      setCurrentView('login');
+    }
+  };
+
   const handleSelectJadwalForAbsensi = (jadwalItem) => {
     setSelectedJadwal(jadwalItem);
     setCurrentView('absensi_form');
+    localStorage.setItem('pjok_active_view', 'absensi_form');
+    localStorage.setItem('pjok_active_jadwal', JSON.stringify(jadwalItem));
   };
 
   // 🔒 ROUTE GUARD: Jika tidak ada user/sesi aktif, paksa ke tampilan Login!
@@ -150,10 +172,7 @@ export default function App() {
       <Navbar
         user={user}
         currentView={activeViewToRender}
-        onNavigate={(view) => {
-          if (user) setCurrentView(view);
-          else setCurrentView('login');
-        }}
+        onNavigate={handleNavigate}
         onLogout={handleLogout}
         isOffline={isOffline}
       />

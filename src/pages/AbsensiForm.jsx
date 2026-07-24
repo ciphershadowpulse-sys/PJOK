@@ -31,45 +31,59 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
 
   useEffect(() => {
     async function loadSiswaAndAbsensi() {
+      if (!jadwal || !jadwal.id) return;
       setLoading(true);
       try {
-        const students = await getSiswaByKelas(jadwal.kelas_id);
-        setSiswaList(students);
+        let students = await getSiswaByKelas(jadwal.kelas_id);
+        if (!students || students.length === 0) {
+          const { getAllSiswa } = await import('../services/storage');
+          students = await getAllSiswa();
+        }
 
-        // Load existing saved records for today
+        // 1. Baca cache lokal terlebih dahulu untuk kecepatan dan respon instan saat F5
+        const cacheKey = `pjok_scanned_cache_${jadwal.id}_${tanggalStr}`;
+        const cachedRaw = localStorage.getItem(cacheKey);
+        let cachedData = null;
+        if (cachedRaw) {
+          try { cachedData = JSON.parse(cachedRaw); } catch (e) {}
+        }
+
+        const map = cachedData?.attendanceData || {};
+        const initialScannedMap = cachedData?.scannedMap || {};
+
+        // 2. Load record absensi yang sudah tersimpan di database Supabase
         const existing = await getAbsensiRecord(jadwal.id, tanggalStr);
-        const map = {};
-        const initialScannedMap = {};
 
-        // 1. Petakan dari list siswa
+        // 3. Gabungkan seluruh data yang tersimpan di DB
+        if (existing && Array.isArray(existing)) {
+          existing.forEach(rec => {
+            if (rec && rec.siswa_id) {
+              const recSiswaId = String(rec.siswa_id).trim();
+              initialScannedMap[recSiswaId] = true;
+              map[recSiswaId] = {
+                status: rec.status || 'Hadir',
+                keterangan: rec.keterangan || ''
+              };
+            }
+          });
+        }
+
+        // 4. Inisialisasi status default untuk seluruh siswa kelas
         students.forEach(s => {
-          const rec = existing.find(e => String(e.siswa_id).trim() === String(s.id).trim());
-          if (rec) {
-            initialScannedMap[s.id] = true;
-            map[s.id] = {
-              status: rec.status,
-              keterangan: rec.keterangan || ''
-            };
-          } else {
-            map[s.id] = {
+          const sId = String(s.id).trim();
+          if (!map[sId]) {
+            map[sId] = {
               status: 'Hadir',
               keterangan: ''
             };
           }
         });
 
-        // 2. Petakan record absensi yang ada di DB meskipun tidak di kelas awal
+        // 5. Jika ada siswa ter-scan yang belum ada di list kelas, ambil detail siswanya
         if (existing && Array.isArray(existing)) {
           for (const rec of existing) {
             if (rec && rec.siswa_id) {
               const recSiswaId = String(rec.siswa_id).trim();
-              initialScannedMap[recSiswaId] = true;
-              if (!map[recSiswaId]) {
-                map[recSiswaId] = {
-                  status: rec.status || 'Hadir',
-                  keterangan: rec.keterangan || ''
-                };
-              }
               if (!students.some(s => String(s.id).trim() === recSiswaId)) {
                 try {
                   const { getAllSiswa } = await import('../services/storage');
@@ -88,10 +102,10 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
         setAttendanceData(map);
         setScannedMap(initialScannedMap);
 
-        if (existing.length > 0 && existing[0].foto_kegiatan) {
+        if (existing && existing.length > 0 && existing[0].foto_kegiatan) {
           setPhotoData(existing[0].foto_kegiatan);
         }
-        if (existing.length > 0 && existing[0].gps_lat) {
+        if (existing && existing.length > 0 && existing[0].gps_lat) {
           setGpsLocation({ lat: existing[0].gps_lat, lng: existing[0].gps_lng });
         }
       } catch (err) {
@@ -102,6 +116,19 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
     }
     loadSiswaAndAbsensi();
   }, [jadwal, tanggalStr]);
+
+  // Simpan cache lokal otomatis saat scannedMap atau attendanceData berubah
+  useEffect(() => {
+    if (jadwal && jadwal.id && Object.keys(scannedMap).length > 0) {
+      try {
+        const cacheKey = `pjok_scanned_cache_${jadwal.id}_${tanggalStr}`;
+        localStorage.setItem(cacheKey, JSON.stringify({
+          scannedMap,
+          attendanceData
+        }));
+      } catch (e) {}
+    }
+  }, [scannedMap, attendanceData, jadwal, tanggalStr]);
 
   // Bulk action "Semua Hadir"
   const handleSemuaHadir = () => {
