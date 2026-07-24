@@ -16,8 +16,23 @@ export default function App() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [realtimeClock, setRealtimeClock] = useState(new Date());
 
-  // 1. Restore & Listen to Supabase Auth Session
+  // 1. Restore & Listen to Session (LocalStorage & Supabase Auth)
   useEffect(() => {
+    // 1a. Instant restore dari LocalStorage saat refresh halaman
+    const savedUser = localStorage.getItem('pjok_user_session');
+    if (savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
+        if (parsed && parsed.id) {
+          setUser(parsed);
+          setCurrentView('dashboard');
+        }
+      } catch (e) {
+        console.warn('LocalStorage restore note:', e);
+      }
+    }
+
+    // 1b. Restore & Listen to Supabase Auth Session
     async function initAuthSession() {
       if (!isSupabaseConfigured) return;
 
@@ -32,6 +47,7 @@ export default function App() {
             role: 'guru'
           };
           setUser(userObj);
+          localStorage.setItem('pjok_user_session', JSON.stringify(userObj));
           setCurrentView('dashboard');
         }
       } catch (err) {
@@ -49,8 +65,10 @@ export default function App() {
             role: 'guru'
           };
           setUser(userObj);
+          localStorage.setItem('pjok_user_session', JSON.stringify(userObj));
           setCurrentView('dashboard');
         } else if (event === 'SIGNED_OUT') {
+          localStorage.removeItem('pjok_user_session');
           setUser(null);
           setCurrentView('login');
         }
@@ -104,11 +122,13 @@ export default function App() {
 
   const handleLoginSuccess = (userData) => {
     setUser(userData);
+    localStorage.setItem('pjok_user_session', JSON.stringify(userData));
     setCurrentView('dashboard');
   };
 
   const handleLogout = async () => {
     await logoutUser();
+    localStorage.removeItem('pjok_user_session');
     setUser(null);
     setSelectedJadwal(null);
     setCurrentView('login');
