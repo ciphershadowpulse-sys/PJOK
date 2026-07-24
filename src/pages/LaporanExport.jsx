@@ -49,6 +49,7 @@ export default function LaporanExport({ onBack }) {
     return {
       Tanggal: rec.tanggal,
       NIS: s.nis || '-',
+      NISN: s.nisn || '-',
       'Nama Siswa': s.nama_siswa || 'N/A',
       Kelas: k.nama_kelas || 'N/A',
       'Guru Olahraga': g.nama_guru || 'Pak Budi',
@@ -78,11 +79,12 @@ export default function LaporanExport({ onBack }) {
     doc.text(`Periode/Tanggal: ${selectedTanggal} | Filter Kelas: ${selectedKelas || 'Semua Kelas'}`, 105, 22, { align: 'center' });
     doc.line(14, 25, 196, 25);
 
-    const tableColumn = ["No", "Tanggal", "NIS", "Nama Siswa", "Kelas", "Status", "Keterangan"];
+    const tableColumn = ["No", "Tanggal", "NIS", "NISN", "Nama Siswa", "Kelas", "Status", "Keterangan"];
     const tableRows = filteredReport.map((row, idx) => [
       idx + 1,
       row.Tanggal,
       row.NIS,
+      row.NISN,
       row['Nama Siswa'],
       row.Kelas,
       row.Status,
@@ -225,6 +227,7 @@ export default function LaporanExport({ onBack }) {
                   <th className="p-3">No</th>
                   <th className="p-3">Tanggal</th>
                   <th className="p-3">NIS</th>
+                  <th className="p-3">NISN</th>
                   <th className="p-3">Nama Siswa</th>
                   <th className="p-3">Kelas</th>
                   <th className="p-3">Guru PJOK</th>
@@ -238,6 +241,7 @@ export default function LaporanExport({ onBack }) {
                     <td className="p-3 font-bold text-slate-400">{idx + 1}</td>
                     <td className="p-3 font-bold">{row.Tanggal}</td>
                     <td className="p-3 text-slate-600">{row.NIS}</td>
+                    <td className="p-3 font-bold text-emerald-600">{row.NISN}</td>
                     <td className="p-3 font-extrabold text-slate-900">{row['Nama Siswa']}</td>
                     <td className="p-3 font-bold text-emerald-600">{row.Kelas}</td>
                     <td className="p-3 text-slate-700">{row['Guru Olahraga']}</td>

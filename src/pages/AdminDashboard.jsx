@@ -29,7 +29,7 @@ export default function AdminDashboard({ user }) {
   });
 
   const [siswaForm, setSiswaForm] = useState({
-    id: '', nis: '', nama_siswa: '', kelas_id: '', jenis_kelamin: 'L'
+    id: '', nis: '', nisn: '', nama_siswa: '', kelas_id: '', jenis_kelamin: 'L'
   });
 
   const loadAllAdminData = async () => {
@@ -79,8 +79,8 @@ export default function AdminDashboard({ user }) {
   // Submit Siswa Form (Tambah / Edit)
   const handleSaveSiswa = async (e) => {
     e.preventDefault();
-    if (!siswaForm.nis || !siswaForm.nama_siswa || !siswaForm.kelas_id) {
-      alert('Lengkapi NIS, Nama Siswa, dan Kelas.');
+    if ((!siswaForm.nis && !siswaForm.nisn) || !siswaForm.nama_siswa || !siswaForm.kelas_id) {
+      alert('Lengkapi NIS/NISN, Nama Siswa, dan Kelas.');
       return;
     }
     try {
@@ -132,6 +132,7 @@ export default function AdminDashboard({ user }) {
     setSiswaForm({
       id: s.id,
       nis: s.nis || '',
+      nisn: s.nisn || '',
       nama_siswa: s.nama_siswa || '',
       kelas_id: s.kelas_id || kelas[0]?.id || '',
       jenis_kelamin: s.jenis_kelamin || 'L'
@@ -476,7 +477,8 @@ export default function AdminDashboard({ user }) {
         const filteredSiswa = siswa.filter((s) => {
           const matchesSearch =
             s.nama_siswa?.toLowerCase().includes(siswaSearch.toLowerCase()) ||
-            s.nis?.toLowerCase().includes(siswaSearch.toLowerCase());
+            s.nis?.toLowerCase().includes(siswaSearch.toLowerCase()) ||
+            s.nisn?.toLowerCase().includes(siswaSearch.toLowerCase());
           const matchesKelas =
             siswaKelasFilter === 'semua' || s.kelas_id === siswaKelasFilter;
           return matchesSearch && matchesKelas;
@@ -549,7 +551,7 @@ export default function AdminDashboard({ user }) {
                 {/* Button Manual Tambah Siswa */}
                 <button
                   onClick={() => {
-                    setSiswaForm({ id: '', nis: '', nama_siswa: '', kelas_id: kelas[0]?.id || '', jenis_kelamin: 'L' });
+                    setSiswaForm({ id: '', nis: '', nisn: '', nama_siswa: '', kelas_id: kelas[0]?.id || '', jenis_kelamin: 'L' });
                     setShowSiswaModal(true);
                   }}
                   className="py-2.5 px-4 bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-sky-600/30 flex items-center space-x-1.5 transition-all cursor-pointer"
@@ -566,7 +568,7 @@ export default function AdminDashboard({ user }) {
                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="text"
-                  placeholder="Cari berdasarkan NIS atau Nama Siswa..."
+                  placeholder="Cari berdasarkan NIS, NISN, atau Nama Siswa..."
                   value={siswaSearch}
                   onChange={(e) => setSiswaSearch(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
@@ -594,6 +596,7 @@ export default function AdminDashboard({ user }) {
                 <thead>
                   <tr className="bg-slate-900 text-white font-extrabold uppercase">
                     <th className="p-3.5">NIS</th>
+                    <th className="p-3.5">NISN</th>
                     <th className="p-3.5">Nama Siswa</th>
                     <th className="p-3.5">Kelas</th>
                     <th className="p-3.5">Gender</th>
@@ -607,7 +610,8 @@ export default function AdminDashboard({ user }) {
                       const k = kelas.find(item => item.id === s.kelas_id);
                       return (
                         <tr key={s.id} className="hover:bg-slate-50">
-                          <td className="p-3.5 font-bold text-slate-600">{s.nis}</td>
+                          <td className="p-3.5 font-bold text-slate-600">{s.nis || '-'}</td>
+                          <td className="p-3.5 font-bold text-emerald-600">{s.nisn || '-'}</td>
                           <td className="p-3.5 font-extrabold text-slate-900">{s.nama_siswa}</td>
                           <td className="p-3.5 font-bold text-sky-600">Kelas {k?.nama_kelas || '-'}</td>
                           <td className="p-3.5">
@@ -795,16 +799,27 @@ export default function AdminDashboard({ user }) {
             </div>
 
             <form onSubmit={handleSaveSiswa} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-bold text-slate-300 mb-1">NIS (Nomor Induk Siswa)</label>
-                <input
-                  type="text"
-                  required
-                  value={siswaForm.nis}
-                  onChange={(e) => setSiswaForm({ ...siswaForm, nis: e.target.value })}
-                  className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white"
-                  placeholder="Contoh: 1015"
-                />
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">NIS (No. Induk)</label>
+                  <input
+                    type="text"
+                    value={siswaForm.nis}
+                    onChange={(e) => setSiswaForm({ ...siswaForm, nis: e.target.value })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white"
+                    placeholder="Contoh: 1015"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-300 mb-1">NISN (Nasional)</label>
+                  <input
+                    type="text"
+                    value={siswaForm.nisn}
+                    onChange={(e) => setSiswaForm({ ...siswaForm, nisn: e.target.value })}
+                    className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white"
+                    placeholder="Contoh: 0051234567"
+                  />
+                </div>
               </div>
 
               <div>

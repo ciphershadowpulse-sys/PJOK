@@ -268,7 +268,8 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
   const filteredSiswa = siswaList.filter(s => {
     const matchesSearch =
       s.nama_siswa.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.nis.includes(searchQuery);
+      (s.nis && s.nis.includes(searchQuery)) ||
+      (s.nisn && s.nisn.includes(searchQuery));
 
     if (!matchesSearch) return false;
 
@@ -522,7 +523,7 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
                         )}
                       </div>
                       <p className="text-xs text-slate-500 font-medium mt-0.5">
-                        NIS: {siswa.nis} | Gender: <span className="font-bold">{siswa.jenis_kelamin}</span>
+                        NIS: <span className="font-bold text-slate-700">{siswa.nis || '-'}</span> | NISN: <span className="font-bold text-emerald-700">{siswa.nisn || '-'}</span> | Gender: <span className="font-bold">{siswa.jenis_kelamin}</span>
                       </p>
                     </div>
                   </div>

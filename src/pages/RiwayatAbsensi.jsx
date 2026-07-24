@@ -47,6 +47,7 @@ export default function RiwayatAbsensi({ onBack, onNavigateToLaporan }) {
       ...rec,
       nama_siswa: s.nama_siswa || 'Siswa N/A',
       nis: s.nis || '-',
+      nisn: s.nisn || '-',
       nama_kelas: k.nama_kelas || 'N/A',
       jam_pelajaran: j.jam_mulai ? `${j.jam_mulai} - ${j.jam_selesai}` : '-'
     };
@@ -101,12 +102,12 @@ export default function RiwayatAbsensi({ onBack, onNavigateToLaporan }) {
             {percentageHadir}%
           </div>
           <div>
-            <div className="text-xs text-slate-400 font-bold uppercase tracking-wider">Persentase Kehadiran</div>
-            <div className="text-xl font-extrabold text-white">
-              {hadirCount} Dari {totalCount} Siswa Hadir
+            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">PERSENTASE KEHADIRAN TOTAL</div>
+            <div className="text-xl font-extrabold text-white mt-0.5">
+              {hadirCount} dari {totalCount} Catatan Hadir
             </div>
-            <p className="text-[11px] text-slate-400 mt-0.5">
-              Statistik dihitung berdasarkan filter data yang aktif.
+            <p className="text-xs text-slate-400 mt-1">
+              Data akumulasi dari seluruh filter kelas & tanggal yang dipilih.
             </p>
           </div>
         </div>
@@ -165,17 +166,21 @@ export default function RiwayatAbsensi({ onBack, onNavigateToLaporan }) {
         </div>
       </div>
 
-      {/* Table Records */}
+      {/* Table Section */}
       {loading ? (
-        <div className="bg-white p-12 rounded-3xl text-center text-slate-500 border border-slate-200">
+        <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center text-slate-500">
           <RefreshCw className="w-8 h-8 animate-spin mx-auto text-emerald-500 mb-2" />
           <p className="text-sm font-semibold">Memuat data riwayat absensi...</p>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white p-10 rounded-3xl text-center space-y-2 border border-slate-200">
-          <div className="text-3xl">📋</div>
-          <h3 className="text-base font-bold text-slate-800">Belum Ada Data Riwayat</h3>
-          <p className="text-xs text-slate-500">Tidak ada absensi yang sesuai dengan kriteria filter.</p>
+        <div className="bg-white p-10 rounded-3xl border border-slate-200 text-center space-y-2">
+          <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-xl">
+            📋
+          </div>
+          <h3 className="text-base font-bold text-slate-800">Belum Ada Data Absensi</h3>
+          <p className="text-xs text-slate-500">
+            Tidak ada catatan absensi yang sesuai dengan filter yang Anda pilih.
+          </p>
         </div>
       ) : (
         <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
@@ -206,7 +211,7 @@ export default function RiwayatAbsensi({ onBack, onNavigateToLaporan }) {
                       <td className="py-3 px-4 font-bold">{item.tanggal}</td>
                       <td className="py-3 px-4 font-bold text-slate-900">
                         {item.nama_siswa}
-                        <span className="block text-[10px] text-slate-400 font-normal">NIS: {item.nis}</span>
+                        <span className="block text-[10px] text-slate-400 font-normal">NIS: {item.nis} | NISN: {item.nisn}</span>
                       </td>
                       <td className="py-3 px-4 font-bold">Kelas {item.nama_kelas}</td>
                       <td className="py-3 px-4 text-slate-600">{item.jam_pelajaran}</td>

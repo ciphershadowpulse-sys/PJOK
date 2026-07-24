@@ -538,10 +538,16 @@ export async function addOrUpdateKelas(kelasData) {
 
 export async function addOrUpdateSiswa(siswaData) {
   if (isSupabaseConfigured && navigator.onLine) {
+    const cleanNis = String(siswaData.nis || '').trim();
+    const cleanNisn = String(siswaData.nisn || '').trim();
     const payload = {
       id: siswaData.id || `siswa_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      ...siswaData,
-      qr_code: siswaData.qr_code || `QR-${siswaData.nis}`
+      nis: cleanNis,
+      nisn: cleanNisn,
+      nama_siswa: String(siswaData.nama_siswa || '').trim(),
+      kelas_id: siswaData.kelas_id || null,
+      jenis_kelamin: siswaData.jenis_kelamin === 'P' ? 'P' : 'L',
+      qr_code: siswaData.qr_code || `QR-${cleanNis || cleanNisn}`
     };
 
     const { data, error } = await supabase.from('siswa').upsert([payload]).select('*');
@@ -553,28 +559,29 @@ export async function addOrUpdateSiswa(siswaData) {
 
 export async function addOrUpdateSiswaBatch(siswaArray) {
   if (isSupabaseConfigured && navigator.onLine) {
-    // 1. Ambil data siswa yang sudah ada untuk mempertahankan ID & QR Code jika NIS sudah terdaftar
-    const { data: existingSiswa } = await supabase.from('siswa').select('id, nis, qr_code');
+    // 1. Ambil data siswa yang sudah ada untuk mempertahankan ID & QR Code jika NIS / NISN sudah terdaftar
+    const { data: existingSiswa } = await supabase.from('siswa').select('id, nis, nisn, qr_code');
     const existingMap = new Map();
     if (existingSiswa) {
       existingSiswa.forEach(s => {
-        if (s.nis) {
-          existingMap.set(String(s.nis).trim().toUpperCase(), s);
-        }
+        if (s.nis) existingMap.set(String(s.nis).trim().toUpperCase(), s);
+        if (s.nisn) existingMap.set(String(s.nisn).trim().toUpperCase(), s);
       });
     }
 
     const payload = siswaArray.map((s, idx) => {
-      const cleanNis = String(s.nis).trim();
-      const existingRecord = existingMap.get(cleanNis.toUpperCase());
+      const cleanNis = String(s.nis || '').trim();
+      const cleanNisn = String(s.nisn || '').trim();
+      const existingRecord = existingMap.get(cleanNis.toUpperCase()) || existingMap.get(cleanNisn.toUpperCase());
 
       return {
-        id: s.id || existingRecord?.id || `siswa_${cleanNis}_${Date.now()}_${idx}`,
+        id: s.id || existingRecord?.id || `siswa_${cleanNis || cleanNisn}_${Date.now()}_${idx}`,
         nis: cleanNis,
+        nisn: cleanNisn,
         nama_siswa: String(s.nama_siswa || '').trim(),
         kelas_id: s.kelas_id || null,
         jenis_kelamin: s.jenis_kelamin === 'P' ? 'P' : 'L',
-        qr_code: s.qr_code || existingRecord?.qr_code || `QR-${cleanNis}`
+        qr_code: s.qr_code || existingRecord?.qr_code || `QR-${cleanNis || cleanNisn}`
       };
     });
 

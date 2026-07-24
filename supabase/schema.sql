@@ -36,16 +36,18 @@ CREATE TABLE IF NOT EXISTS kelas (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- 4. TABEL SISWA
+-- 4. TABEL SISWA (Mendukung NIS & NISN)
 CREATE TABLE IF NOT EXISTS siswa (
     id TEXT PRIMARY KEY,
     nis TEXT UNIQUE NOT NULL,
+    nisn TEXT,
     nama_siswa TEXT NOT NULL,
     kelas_id TEXT REFERENCES kelas(id) ON DELETE CASCADE,
     jenis_kelamin TEXT NOT NULL DEFAULT 'L',
     qr_code TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+ALTER TABLE siswa ADD COLUMN IF NOT EXISTS nisn TEXT;
 
 -- 5. TABEL JADWAL PELAJARAN (Master Jadwal Permanen Mingguan/Harian)
 CREATE TABLE IF NOT EXISTS jadwal_pelajaran (
@@ -87,6 +89,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 
 -- 8. INDEKS OPTIMASI PENCARIAN ABSENSI & SCAN QR CODE
 CREATE INDEX IF NOT EXISTS idx_siswa_nis ON siswa(nis);
+CREATE INDEX IF NOT EXISTS idx_siswa_nisn ON siswa(nisn);
 CREATE INDEX IF NOT EXISTS idx_siswa_qr ON siswa(qr_code);
 CREATE INDEX IF NOT EXISTS idx_siswa_kelas ON siswa(kelas_id);
 CREATE INDEX IF NOT EXISTS idx_absensi_jadwal_tanggal ON absensi(jadwal_id, tanggal);
