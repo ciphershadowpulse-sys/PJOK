@@ -583,18 +583,6 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
           <div className="flex items-center space-x-1 bg-slate-100 p-1.5 rounded-2xl text-[11px] font-extrabold">
             <button
               type="button"
-              onClick={() => setViewMode('scanned_only')}
-              className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 ${
-                viewMode === 'scanned_only'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
-              }`}
-              title="Fungsi: Menampilkan daftar siswa yang SUDAH selesai di-scan"
-            >
-              <span>✓ Selesai Scan ({scannedSiswaCount})</span>
-            </button>
-            <button
-              type="button"
               onClick={() => setViewMode('unscanned')}
               className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 ${
                 viewMode === 'unscanned'
@@ -605,17 +593,32 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
             >
               <span>⏳ Belum Scan ({unscannedSiswaCount})</span>
             </button>
+
             <button
               type="button"
               onClick={() => setViewMode('all')}
-              className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer ${
+              className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 ${
                 viewMode === 'all'
                   ? 'bg-slate-900 text-white shadow-sm'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
               }`}
               title="Fungsi: Menampilkan SELURUH siswa kelas secara lengkap"
             >
-              <span>Semua ({siswaList.length})</span>
+              <Users className="w-3.5 h-3.5" />
+              <span>Semua Siswa ({siswaList.length})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setViewMode('scanned_only')}
+              className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 ${
+                viewMode === 'scanned_only'
+                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+              }`}
+              title="Fungsi: Menampilkan daftar siswa yang SUDAH selesai di-scan"
+            >
+              <span>✓ Selesai Scan ({scannedSiswaCount})</span>
             </button>
           </div>
         </div>
