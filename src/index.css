@@ -2,6 +2,41 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  body {
+    background-color: #080911;
+    color: #f4f4f6;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  body.light-mode {
+    background-color: #f8fafc;
+    color: #0f172a;
+  }
+}
+
+/* Custom Scrollbar for Dark & Light Theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #080911;
+}
+body.light-mode ::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #242747;
+  border-radius: 9999px;
+}
+body.light-mode ::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #8b5cf6;
+}
+
 @layer utilities {
   @keyframes shake {
     0%, 100% { transform: translateX(0); }
@@ -10,8 +45,27 @@
   }
 
   @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(6px); }
+    from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes pulseGlowViolet {
+    0%, 100% {
+      box-shadow: 0 0 18px -2px rgba(139, 92, 246, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 35px 4px rgba(168, 85, 247, 0.7);
+    }
+  }
+
+  @keyframes floatSlow {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-7px); }
+  }
+
+  @keyframes laserScan {
+    0%, 100% { top: 10%; opacity: 0.8; }
+    50% { top: 90%; opacity: 1; }
   }
 
   .animate-shake {
@@ -19,6 +73,110 @@
   }
 
   .animate-fade-in {
-    animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   }
+
+  .animate-pulse-glow {
+    animation: pulseGlowViolet 2.5s infinite ease-in-out;
+  }
+
+  .animate-float {
+    animation: floatSlow 4s ease-in-out infinite;
+  }
+
+  .animate-laser {
+    animation: laserScan 2s ease-in-out infinite;
+  }
+
+  /* Glassmorphism & Modern Finova-Style Cards */
+  .dark-card-violet {
+    background: #121324;
+    border: 1px solid #242747;
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  body.light-mode .dark-card-violet {
+    background: #ffffff;
+    border-color: #e2e8f0;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05);
+  }
+
+  .dark-card-violet:hover {
+    border-color: rgba(168, 85, 247, 0.5);
+    box-shadow: 0 10px 35px -10px rgba(0, 0, 0, 0.85), 0 0 25px -5px rgba(139, 92, 246, 0.25);
+    transform: translateY(-2px);
+  }
+
+  body.light-mode .dark-card-violet:hover {
+    border-color: #8b5cf6;
+    box-shadow: 0 12px 30px -5px rgba(139, 92, 246, 0.15);
+  }
+
+  .purple-gradient-card {
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 50%, #4c1d95 100%);
+    box-shadow: 0 12px 35px -8px rgba(124, 58, 237, 0.45);
+  }
+
+  .coral-gradient-card {
+    background: linear-gradient(135deg, #ff4d6d 0%, #f43f5e 50%, #e11d48 100%);
+    box-shadow: 0 12px 35px -8px rgba(244, 63, 94, 0.45);
+  }
+}
+
+/* Light Mode Comprehensive Class Overrides */
+body.light-mode .bg-\[\#080911\],
+body.light-mode .bg-\[\#05060b\]\/80,
+body.light-mode .bg-\[\#05060b\]\/85 {
+  background-color: #f8fafc !important;
+}
+
+body.light-mode .bg-\[\#0e0f1d\],
+body.light-mode .bg-\[\#090a14\],
+body.light-mode .bg-\[\#121324\],
+body.light-mode .bg-\[\#14152a\],
+body.light-mode .bg-\[\#181a33\],
+body.light-mode .bg-\[\#1b1d38\],
+body.light-mode .bg-\[\#1d1f3d\] {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+body.light-mode .border-\[\#242747\],
+body.light-mode .border-\[\#26284a\] {
+  border-color: #e2e8f0 !important;
+}
+
+body.light-mode .text-white {
+  color: #0f172a !important;
+}
+
+body.light-mode .text-zinc-400,
+body.light-mode .text-zinc-300 {
+  color: #475569 !important;
+}
+
+body.light-mode .text-zinc-200,
+body.light-mode .text-zinc-100 {
+  color: #1e293b !important;
+}
+
+body.light-mode .bg-gradient-to-br.from-\[\#12132a\] {
+  background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%) !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+body.light-mode table {
+  color: #0f172a !important;
+}
+
+body.light-mode tr.hover\:bg-\[\#1d1f3d\]:hover {
+  background-color: #f1f5f9 !important;
+}
+
+body.light-mode input,
+body.light-mode select {
+  background-color: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
 }

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { User, Lock, LogIn, ShieldAlert, Activity, MapPin, Database, UserPlus, Mail, CheckCircle2 } from 'lucide-react';
+import { User, Lock, LogIn, ShieldAlert, Activity, MapPin, Database, UserPlus, Mail, CheckCircle2, Sparkles } from 'lucide-react';
 import { loginUser, registerUser } from '../services/storage';
 
 export default function Login({ onLoginSuccess }) {
@@ -80,34 +80,34 @@ export default function Login({ onLoginSuccess }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
+    <div className="min-h-screen bg-[#080911] flex flex-col justify-center py-10 px-4 sm:px-6 lg:px-8 relative overflow-hidden animate-fade-in">
       
-      {/* Background Decorator Gradients */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-sky-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      {/* Background Decorator Glow Orbs */}
+      <div className="absolute -top-40 -left-40 w-96 h-96 bg-[#8b5cf6]/20 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-[#f43f5e]/15 rounded-full blur-3xl pointer-events-none"></div>
 
-      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center z-10">
-        <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-tr from-emerald-600 to-teal-400 text-white shadow-2xl shadow-emerald-500/30 mb-4 animate-bounce-subtle">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center z-10 space-y-3">
+        <div className="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-[#a855f7] via-[#8b5cf6] to-[#6d28d9] text-white shadow-2xl shadow-[#8b5cf6]/40 animate-float">
           <span className="text-4xl">⚽</span>
         </div>
-        <h2 className="text-3xl font-extrabold tracking-tight text-white">
-          ABSENSI GURU <span className="text-emerald-400">PJOK</span>
+        <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
+          ABSENSI GURU <span className="bg-gradient-to-r from-[#c084fc] via-[#a855f7] to-[#f43f5e] bg-clip-text text-transparent">PJOK</span>
         </h2>
-        <p className="mt-2 text-sm text-slate-400 max-w-xs mx-auto font-medium">
+        <p className="text-xs sm:text-sm text-zinc-400 max-w-xs mx-auto font-medium">
           Aplikasi Absensi Lapangan Mandiri Khusus Guru Olahraga Sekolah
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md z-10">
-        <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800 py-8 px-6 shadow-2xl rounded-3xl sm:px-10">
+        <div className="bg-[#121324] backdrop-blur-xl border border-[#242747] py-8 px-6 shadow-2xl rounded-3xl sm:px-10 hover:border-[#8b5cf6]/50 transition-all duration-300">
           
           {/* Mode Switch Tabs */}
-          <div className="flex bg-slate-800/90 p-1 rounded-2xl border border-slate-700/80 mb-6 text-xs font-extrabold">
+          <div className="flex bg-[#181a33] p-1.5 rounded-2xl border border-[#242747] mb-6 text-xs font-black">
             <button
               type="button"
               onClick={() => { setIsRegistering(false); setError(''); setSuccessInfo(''); }}
-              className={`flex-1 py-3 rounded-xl transition-all flex items-center justify-center space-x-1.5 ${
-                !isRegistering ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+              className={`flex-1 py-3 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 cursor-pointer ${
+                !isRegistering ? 'bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] text-white shadow-lg shadow-[#8b5cf6]/35 scale-[1.02]' : 'text-zinc-400 hover:text-white'
               }`}
             >
               <LogIn className="w-4 h-4" />
@@ -117,8 +117,8 @@ export default function Login({ onLoginSuccess }) {
             <button
               type="button"
               onClick={() => { setIsRegistering(true); setError(''); setSuccessInfo(''); }}
-              className={`flex-1 py-3 rounded-xl transition-all flex items-center justify-center space-x-1.5 ${
-                isRegistering ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-white'
+              className={`flex-1 py-3 rounded-xl transition-all duration-300 flex items-center justify-center space-x-2 cursor-pointer ${
+                isRegistering ? 'bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] text-white shadow-lg shadow-[#8b5cf6]/35 scale-[1.02]' : 'text-zinc-400 hover:text-white'
               }`}
             >
               <UserPlus className="w-4 h-4" />
@@ -148,7 +148,7 @@ export default function Login({ onLoginSuccess }) {
             {isRegistering && (
               <>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-black text-zinc-300 uppercase tracking-wider mb-1.5">
                     Nama Lengkap Guru (Gelar)
                   </label>
                   <input
@@ -156,39 +156,39 @@ export default function Login({ onLoginSuccess }) {
                     required
                     value={namaGuru}
                     onChange={(e) => setNamaGuru(e.target.value)}
-                    className="block w-full px-4 py-3 bg-slate-800/80 border border-slate-700 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-medium transition-all"
+                    className="block w-full px-4 py-3 bg-[#181a33] border border-[#242747] rounded-2xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] text-sm font-medium transition-all"
                     placeholder="Contoh: Pak Budi Prasetyo, S.Pd"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-black text-zinc-300 uppercase tracking-wider mb-1.5">
                     Email Resmi Guru
                   </label>
                   <div className="relative rounded-2xl shadow-sm">
-                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
-                      <Mail className="h-5 w-5 text-emerald-400" />
+                    <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
+                      <Mail className="h-5 w-5 text-[#c084fc]" />
                     </div>
                     <input
                       type="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="block w-full pl-11 pr-4 py-3 bg-slate-800/80 border border-slate-700 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-medium transition-all"
+                      className="block w-full pl-11 pr-4 py-3 bg-[#181a33] border border-[#242747] rounded-2xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] text-sm font-medium transition-all"
                       placeholder="contoh: budi@sekolah.sch.id atau guru@gmail.com"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-black text-zinc-300 uppercase tracking-wider mb-1.5">
                     NIP Guru (Opsional)
                   </label>
                   <input
                     type="text"
                     value={nip}
                     onChange={(e) => setNip(e.target.value)}
-                    className="block w-full px-4 py-3 bg-slate-800/80 border border-slate-700 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-medium transition-all"
+                    className="block w-full px-4 py-3 bg-[#181a33] border border-[#242747] rounded-2xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] text-sm font-medium transition-all"
                     placeholder="Contoh: 198504122010011005"
                   />
                 </div>
@@ -196,11 +196,11 @@ export default function Login({ onLoginSuccess }) {
             )}
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-black text-zinc-300 uppercase tracking-wider mb-1.5">
                 {isRegistering ? 'Username Akses System' : 'Username / Email Resmi Guru'}
               </label>
               <div className="relative rounded-2xl shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
                   <User className="h-5 w-5" />
                 </div>
                 <input
@@ -208,18 +208,18 @@ export default function Login({ onLoginSuccess }) {
                   required
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="block w-full pl-11 pr-4 py-3 bg-slate-800/80 border border-slate-700 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-medium transition-all"
+                  className="block w-full pl-11 pr-4 py-3 bg-[#181a33] border border-[#242747] rounded-2xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] text-sm font-medium transition-all"
                   placeholder="Masukkan username atau email resmi"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1.5">
+              <label className="block text-xs font-black text-zinc-300 uppercase tracking-wider mb-1.5">
                 Password {isRegistering && '(Minimal 6 karakter)'}
               </label>
               <div className="relative rounded-2xl shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
                   <Lock className="h-5 w-5" />
                 </div>
                 <input
@@ -228,7 +228,7 @@ export default function Login({ onLoginSuccess }) {
                   minLength={6}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-11 pr-4 py-3 bg-slate-800/80 border border-slate-700 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-medium transition-all"
+                  className="block w-full pl-11 pr-4 py-3 bg-[#181a33] border border-[#242747] rounded-2xl text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] text-sm font-medium transition-all"
                   placeholder="••••••••"
                 />
               </div>
@@ -237,7 +237,7 @@ export default function Login({ onLoginSuccess }) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center items-center space-x-2 py-3.5 px-4 rounded-2xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 shadow-lg shadow-emerald-600/30 transition-all disabled:opacity-50 cursor-pointer mt-6"
+              className="w-full flex justify-center items-center space-x-2 py-4 px-4 rounded-2xl text-sm font-black text-white bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] hover:from-[#9333ea] hover:to-[#581c87] hover:scale-[1.02] active:scale-95 shadow-xl shadow-[#8b5cf6]/35 transition-all disabled:opacity-50 cursor-pointer mt-6"
             >
               {loading ? (
                 <span>Memproses...</span>
@@ -258,17 +258,17 @@ export default function Login({ onLoginSuccess }) {
         </div>
 
         {/* Feature Badges */}
-        <div className="mt-8 grid grid-cols-3 gap-2 text-center text-[11px] text-slate-400 font-medium">
-          <div className="flex flex-col items-center p-2 rounded-xl bg-slate-900/50 border border-slate-800">
-            <Activity className="w-4 h-4 text-emerald-400 mb-1" />
+        <div className="mt-8 grid grid-cols-3 gap-3 text-center text-[11px] text-zinc-400 font-bold">
+          <div className="flex flex-col items-center p-3 rounded-2xl bg-[#121324] border border-[#242747]">
+            <Activity className="w-4 h-4 text-[#c084fc] mb-1" />
             <span>Deteksi Jam Real-time</span>
           </div>
-          <div className="flex flex-col items-center p-2 rounded-xl bg-slate-900/50 border border-slate-800">
+          <div className="flex flex-col items-center p-3 rounded-2xl bg-[#121324] border border-[#242747]">
             <MapPin className="w-4 h-4 text-sky-400 mb-1" />
             <span>Tag GPS & Foto Lapangan</span>
           </div>
-          <div className="flex flex-col items-center p-2 rounded-xl bg-slate-900/50 border border-slate-800">
-            <Database className="w-4 h-4 text-emerald-400 mb-1" />
+          <div className="flex flex-col items-center p-3 rounded-2xl bg-[#121324] border border-[#242747]">
+            <Database className="w-4 h-4 text-[#c084fc] mb-1" />
             <span>Supabase Live DB</span>
           </div>
         </div>

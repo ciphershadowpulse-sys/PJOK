@@ -67,20 +67,20 @@ export default function RiwayatAbsensi({ onBack, onNavigateToLaporan }) {
   const percentageHadir = totalCount > 0 ? Math.round((hadirCount / totalCount) * 100) : 0;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-fade-in">
       
       {/* Top Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-3">
           <button
             onClick={onBack}
-            className="p-2.5 bg-white border border-slate-200 hover:bg-slate-100 rounded-2xl transition-all shadow-sm"
+            className="p-2.5 bg-[#121324] border border-[#242747] hover:bg-[#1a1c38] text-zinc-300 hover:text-white rounded-2xl transition-all shadow-sm cursor-pointer"
           >
-            <ArrowLeft className="w-5 h-5 text-slate-700" />
+            <ArrowLeft className="w-5 h-5 text-[#c084fc]" />
           </button>
           <div>
-            <h1 className="text-2xl font-black text-slate-900">Riwayat Absensi Siswa PJOK</h1>
-            <p className="text-xs text-slate-500 font-medium">
+            <h1 className="text-2xl font-black text-white">Riwayat Absensi Siswa PJOK</h1>
+            <p className="text-xs text-zinc-400 font-medium">
               Pantau catatan kehadiran per kelas, per tanggal, dan persentase tingkat partisipasi.
             </p>
           </div>
@@ -88,7 +88,7 @@ export default function RiwayatAbsensi({ onBack, onNavigateToLaporan }) {
 
         <button
           onClick={() => onNavigateToLaporan()}
-          className="py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-emerald-600/30 flex items-center justify-center space-x-2 transition-all"
+          className="py-3 px-5 bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] hover:scale-105 text-white font-black text-xs rounded-2xl shadow-lg shadow-[#8b5cf6]/35 flex items-center justify-center space-x-2 transition-all cursor-pointer"
         >
           <FileText className="w-4 h-4" />
           <span>Cetak & Export Laporan PDF/Excel</span>
@@ -97,130 +97,132 @@ export default function RiwayatAbsensi({ onBack, onNavigateToLaporan }) {
 
       {/* Percentage Analytics Card */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-slate-900 text-white p-5 rounded-3xl border border-slate-800 shadow-xl flex items-center space-x-4 col-span-1 md:col-span-2">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-black text-2xl border border-emerald-500/30">
+        <div className="bg-[#121324] text-white p-6 rounded-3xl border border-[#242747] shadow-xl flex items-center space-x-4 col-span-1 md:col-span-2 relative overflow-hidden">
+          <div className="absolute right-0 top-0 w-48 h-48 bg-[#8b5cf6]/20 rounded-full blur-2xl pointer-events-none"></div>
+
+          <div className="w-16 h-16 rounded-2xl bg-[#8b5cf6]/20 text-[#c084fc] flex items-center justify-center font-black text-2xl border border-[#8b5cf6]/30 shadow-lg shadow-[#8b5cf6]/20 flex-shrink-0">
             {percentageHadir}%
           </div>
           <div>
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">PERSENTASE KEHADIRAN TOTAL</div>
-            <div className="text-xl font-extrabold text-white mt-0.5">
+            <div className="text-[10px] font-extrabold text-zinc-400 uppercase tracking-widest">PERSENTASE KEHADIRAN TOTAL</div>
+            <div className="text-xl font-black text-white mt-0.5">
               {hadirCount} dari {totalCount} Catatan Hadir
             </div>
-            <p className="text-xs text-slate-400 mt-1">
+            <p className="text-xs text-zinc-400 mt-1 font-medium">
               Data akumulasi dari seluruh filter kelas & tanggal yang dipilih.
             </p>
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-center">
-          <div className="text-xs text-slate-500 font-bold uppercase">Total Catatan Absensi</div>
-          <div className="text-2xl font-black text-slate-900 mt-1">{totalCount} Record</div>
+        <div className="bg-[#121324] p-6 rounded-3xl border border-[#242747] shadow-xl flex flex-col justify-center">
+          <div className="text-[10px] text-zinc-400 font-extrabold uppercase tracking-widest">Total Catatan Absensi</div>
+          <div className="text-2xl font-black text-white mt-1">{totalCount} Record</div>
         </div>
 
-        <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-center">
-          <div className="text-xs text-slate-500 font-bold uppercase">Total Kelas Terdata</div>
-          <div className="text-2xl font-black text-slate-900 mt-1">{kelasList.length} Kelas</div>
+        <div className="bg-[#121324] p-6 rounded-3xl border border-[#242747] shadow-xl flex flex-col justify-center">
+          <div className="text-[10px] text-zinc-400 font-extrabold uppercase tracking-widest">Total Kelas Terdata</div>
+          <div className="text-2xl font-black text-white mt-1">{kelasList.length} Kelas</div>
         </div>
       </div>
 
       {/* Filters Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="bg-[#121324] p-4 rounded-2xl border border-[#242747] shadow-xl grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
-          <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Filter Kelas</label>
+          <label className="block text-[11px] font-black text-zinc-400 uppercase tracking-wider mb-1.5">Filter Kelas</label>
           <select
             value={filterKelas}
             onChange={(e) => setFilterKelas(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800"
+            className="w-full bg-[#181a33] border border-[#242747] rounded-xl px-3.5 py-2.5 text-xs font-bold text-white focus:ring-2 focus:ring-[#8b5cf6] outline-none"
           >
-            <option value="">Semua Kelas</option>
+            <option value="" className="bg-[#121324]">Semua Kelas</option>
             {kelasList.map(k => (
-              <option key={k.id} value={k.nama_kelas}>Kelas {k.nama_kelas}</option>
+              <option key={k.id} value={k.nama_kelas} className="bg-[#121324]">Kelas {k.nama_kelas}</option>
             ))}
           </select>
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Filter Tanggal</label>
+          <label className="block text-[11px] font-black text-zinc-400 uppercase tracking-wider mb-1.5">Filter Tanggal</label>
           <input
             type="date"
             value={filterTanggal}
             onChange={(e) => setFilterTanggal(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800"
+            className="w-full bg-[#181a33] border border-[#242747] rounded-xl px-3.5 py-2.5 text-xs font-bold text-white focus:ring-2 focus:ring-[#8b5cf6] outline-none"
           />
         </div>
 
         <div>
-          <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Filter Status</label>
+          <label className="block text-[11px] font-black text-zinc-400 uppercase tracking-wider mb-1.5">Filter Status</label>
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800"
+            className="w-full bg-[#181a33] border border-[#242747] rounded-xl px-3.5 py-2.5 text-xs font-bold text-white focus:ring-2 focus:ring-[#8b5cf6] outline-none"
           >
-            <option value="">Semua Status</option>
-            <option value="Hadir">Hadir</option>
-            <option value="Sakit">Sakit</option>
-            <option value="Izin">Izin</option>
-            <option value="Alpa">Alpa</option>
-            <option value="Terlambat">Terlambat</option>
+            <option value="" className="bg-[#121324]">Semua Status</option>
+            <option value="Hadir" className="bg-[#121324]">Hadir</option>
+            <option value="Sakit" className="bg-[#121324]">Sakit</option>
+            <option value="Izin" className="bg-[#121324]">Izin</option>
+            <option value="Alpa" className="bg-[#121324]">Alpa</option>
+            <option value="Terlambat" className="bg-[#121324]">Terlambat</option>
           </select>
         </div>
       </div>
 
       {/* Table Section */}
       {loading ? (
-        <div className="bg-white p-12 rounded-3xl border border-slate-200 text-center text-slate-500">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto text-emerald-500 mb-2" />
-          <p className="text-sm font-semibold">Memuat data riwayat absensi...</p>
+        <div className="bg-[#121324] p-12 rounded-3xl border border-[#242747] text-center text-zinc-400">
+          <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#a855f7] mb-3" />
+          <p className="text-sm font-bold">Memuat data riwayat absensi...</p>
         </div>
       ) : filtered.length === 0 ? (
-        <div className="bg-white p-10 rounded-3xl border border-slate-200 text-center space-y-2">
-          <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto text-xl">
+        <div className="bg-[#121324] p-10 rounded-3xl border border-[#242747] text-center space-y-2">
+          <div className="w-12 h-12 bg-[#181a33] rounded-2xl border border-[#242747] flex items-center justify-center mx-auto text-xl">
             📋
           </div>
-          <h3 className="text-base font-bold text-slate-800">Belum Ada Data Absensi</h3>
-          <p className="text-xs text-slate-500">
+          <h3 className="text-base font-black text-white">Belum Ada Data Absensi</h3>
+          <p className="text-xs text-zinc-400 font-medium">
             Tidak ada catatan absensi yang sesuai dengan filter yang Anda pilih.
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-[#121324] rounded-3xl border border-[#242747] shadow-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-900 text-white text-[11px] font-extrabold uppercase tracking-wider border-b border-slate-800">
-                  <th className="py-3.5 px-4">No</th>
-                  <th className="py-3.5 px-4">Tanggal</th>
-                  <th className="py-3.5 px-4">Siswa</th>
-                  <th className="py-3.5 px-4">Kelas</th>
-                  <th className="py-3.5 px-4">Jam Pelajaran</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4">Keterangan</th>
+                <tr className="bg-[#181a33] text-zinc-400 text-[11px] font-black uppercase tracking-wider border-b border-[#242747]">
+                  <th className="py-4 px-4">No</th>
+                  <th className="py-4 px-4">Tanggal</th>
+                  <th className="py-4 px-4">Siswa</th>
+                  <th className="py-4 px-4">Kelas</th>
+                  <th className="py-4 px-4">Jam Pelajaran</th>
+                  <th className="py-4 px-4">Status</th>
+                  <th className="py-4 px-4">Keterangan</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-800">
+              <tbody className="divide-y divide-[#242747] text-xs font-medium text-zinc-200">
                 {filtered.map((item, idx) => {
-                  let badgeColor = 'bg-emerald-100 text-emerald-800';
-                  if (item.status === 'Sakit') badgeColor = 'bg-amber-100 text-amber-800';
-                  if (item.status === 'Izin') badgeColor = 'bg-sky-100 text-sky-800';
-                  if (item.status === 'Alpa') badgeColor = 'bg-rose-100 text-rose-800';
-                  if (item.status === 'Terlambat') badgeColor = 'bg-purple-100 text-purple-800';
+                  let badgeColor = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+                  if (item.status === 'Sakit') badgeColor = 'bg-amber-500/20 text-amber-400 border border-amber-500/30';
+                  if (item.status === 'Izin') badgeColor = 'bg-sky-500/20 text-sky-400 border border-sky-500/30';
+                  if (item.status === 'Alpa') badgeColor = 'bg-rose-500/20 text-rose-400 border border-rose-500/30';
+                  if (item.status === 'Terlambat') badgeColor = 'bg-purple-500/20 text-purple-400 border border-purple-500/30';
 
                   return (
-                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
-                      <td className="py-3 px-4 font-bold text-slate-400">{idx + 1}</td>
-                      <td className="py-3 px-4 font-bold">{item.tanggal}</td>
-                      <td className="py-3 px-4 font-bold text-slate-900">
+                    <tr key={item.id} className="hover:bg-[#1d1f3d] transition-colors">
+                      <td className="py-4 px-4 font-bold text-zinc-500">{idx + 1}</td>
+                      <td className="py-4 px-4 font-bold text-white">{item.tanggal}</td>
+                      <td className="py-4 px-4 font-black text-white">
                         {item.nama_siswa}
-                        <span className="block text-[10px] text-slate-400 font-normal">NIS: {item.nis} | NISN: {item.nisn}</span>
+                        <span className="block text-[10px] text-zinc-400 font-normal mt-0.5">NIS: {item.nis} | NISN: {item.nisn}</span>
                       </td>
-                      <td className="py-3 px-4 font-bold">Kelas {item.nama_kelas}</td>
-                      <td className="py-3 px-4 text-slate-600">{item.jam_pelajaran}</td>
-                      <td className="py-3 px-4">
-                        <span className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold ${badgeColor}`}>
+                      <td className="py-4 px-4 font-bold text-sky-400">Kelas {item.nama_kelas}</td>
+                      <td className="py-4 px-4 text-zinc-300">{item.jam_pelajaran}</td>
+                      <td className="py-4 px-4">
+                        <span className={`px-3 py-1 rounded-full text-[11px] font-black ${badgeColor}`}>
                           {item.status}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-slate-500 italic">
+                      <td className="py-4 px-4 text-zinc-400 italic">
                         {item.keterangan || '-'}
                       </td>
                     </tr>

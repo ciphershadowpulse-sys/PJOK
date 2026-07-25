@@ -69,7 +69,6 @@ export default function LaporanExport({ onBack }) {
   const exportPDF = () => {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
-    // Header Kop Sekolah
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text('REKAPITULASI ABSENSI SISWA MATA PELAJARAN PJOK', 105, 15, { align: 'center' });
@@ -96,11 +95,10 @@ export default function LaporanExport({ onBack }) {
       body: tableRows,
       startY: 28,
       theme: 'grid',
-      headStyles: { fillColor: [22, 163, 74], textColor: [255, 255, 255], fontStyle: 'bold' },
+      headStyles: { fillColor: [139, 92, 246], textColor: [255, 255, 255], fontStyle: 'bold' },
       styles: { fontSize: 8, cellPadding: 3 }
     });
 
-    // Signature Footer
     const finalY = doc.lastAutoTable.finalY + 15;
     doc.setFontSize(9);
     doc.text('Mengetahui,', 140, finalY);
@@ -119,29 +117,29 @@ export default function LaporanExport({ onBack }) {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6 animate-fade-in">
       
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center space-x-3">
           <button
             onClick={onBack}
-            className="p-2.5 bg-white border border-slate-200 hover:bg-slate-100 rounded-2xl transition-all shadow-sm"
+            className="p-2.5 bg-[#121324] border border-[#242747] hover:bg-[#1a1c38] text-zinc-300 hover:text-white rounded-2xl transition-all shadow-sm cursor-pointer"
           >
-            <ArrowLeft className="w-5 h-5 text-slate-700" />
+            <ArrowLeft className="w-5 h-5 text-[#c084fc]" />
           </button>
           <div>
-            <h1 className="text-2xl font-black text-slate-900">Laporan & Rekapitulasi Absensi</h1>
-            <p className="text-xs text-slate-500 font-medium">
+            <h1 className="text-2xl font-black text-white">Laporan & Rekapitulasi Absensi</h1>
+            <p className="text-xs text-zinc-400 font-medium">
               Cetak dan unduh laporan absensi harian, mingguan, bulanan, per kelas, atau per siswa.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
             onClick={exportPDF}
-            className="py-2.5 px-4 bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-rose-600/30 flex items-center space-x-2 transition-all"
+            className="py-3 px-5 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-2xl shadow-lg shadow-rose-600/30 flex items-center space-x-2 transition-all cursor-pointer"
           >
             <FileText className="w-4 h-4" />
             <span>Export PDF</span>
@@ -149,7 +147,7 @@ export default function LaporanExport({ onBack }) {
 
           <button
             onClick={exportExcel}
-            className="py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-2xl shadow-lg shadow-emerald-600/30 flex items-center space-x-2 transition-all"
+            className="py-3 px-5 bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] hover:scale-105 text-white font-black text-xs rounded-2xl shadow-lg shadow-[#8b5cf6]/35 flex items-center space-x-2 transition-all cursor-pointer"
           >
             <Download className="w-4 h-4" />
             <span>Export Excel</span>
@@ -158,48 +156,48 @@ export default function LaporanExport({ onBack }) {
       </div>
 
       {/* Filter Controls Card */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-        <h2 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
-          <Filter className="w-4 h-4 text-emerald-600" />
+      <div className="bg-[#121324] p-6 rounded-3xl border border-[#242747] shadow-xl space-y-4">
+        <h2 className="text-xs font-black text-zinc-300 uppercase tracking-wider flex items-center gap-2">
+          <Filter className="w-4 h-4 text-[#c084fc]" />
           <span>Pengaturan Parameter Laporan</span>
         </h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Jenis Rekapitulasi</label>
+            <label className="block text-[11px] font-black text-zinc-400 uppercase tracking-wider mb-1.5">Jenis Rekapitulasi</label>
             <select
               value={jenisLaporan}
               onChange={(e) => setJenisLaporan(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800"
+              className="w-full bg-[#181a33] border border-[#242747] rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-[#8b5cf6]"
             >
-              <option value="harian">Rekap Harian</option>
-              <option value="mingguan">Rekap Mingguan</option>
-              <option value="bulanan">Rekap Bulanan</option>
-              <option value="per_kelas">Rekap Per Kelas</option>
-              <option value="per_siswa">Rekap Per Siswa</option>
+              <option value="harian" className="bg-[#121324]">Rekap Harian</option>
+              <option value="mingguan" className="bg-[#121324]">Rekap Mingguan</option>
+              <option value="bulanan" className="bg-[#121324]">Rekap Bulanan</option>
+              <option value="per_kelas" className="bg-[#121324]">Rekap Per Kelas</option>
+              <option value="per_siswa" className="bg-[#121324]">Rekap Per Siswa</option>
             </select>
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Filter Tanggal Acuan</label>
+            <label className="block text-[11px] font-black text-zinc-400 uppercase tracking-wider mb-1.5">Filter Tanggal Acuan</label>
             <input
               type="date"
               value={selectedTanggal}
               onChange={(e) => setSelectedTanggal(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800"
+              className="w-full bg-[#181a33] border border-[#242747] rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-[#8b5cf6]"
             />
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Filter Kelas</label>
+            <label className="block text-[11px] font-black text-zinc-400 uppercase tracking-wider mb-1.5">Filter Kelas</label>
             <select
               value={selectedKelas}
               onChange={(e) => setSelectedKelas(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold text-slate-800"
+              className="w-full bg-[#181a33] border border-[#242747] rounded-xl px-4 py-2.5 text-xs font-bold text-white outline-none focus:ring-2 focus:ring-[#8b5cf6]"
             >
-              <option value="">Semua Kelas</option>
+              <option value="" className="bg-[#121324]">Semua Kelas</option>
               {kelas.map(k => (
-                <option key={k.id} value={k.nama_kelas}>Kelas {k.nama_kelas}</option>
+                <option key={k.id} value={k.nama_kelas} className="bg-[#121324]">Kelas {k.nama_kelas}</option>
               ))}
             </select>
           </div>
@@ -207,46 +205,46 @@ export default function LaporanExport({ onBack }) {
       </div>
 
       {/* Report Preview Table */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden space-y-3 p-5">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-          <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-            <Table className="w-4 h-4 text-emerald-600" />
+      <div className="bg-[#121324] rounded-3xl border border-[#242747] shadow-xl overflow-hidden space-y-4 p-6">
+        <div className="flex items-center justify-between border-b border-[#242747] pb-4">
+          <h3 className="text-sm font-black text-white flex items-center gap-2">
+            <Table className="w-4 h-4 text-[#c084fc]" />
             <span>Pratinjau Data Laporan ({filteredReport.length} Data)</span>
           </h3>
         </div>
 
         {filteredReport.length === 0 ? (
-          <div className="p-8 text-center text-slate-400 text-xs">
+          <div className="p-8 text-center text-zinc-500 text-xs">
             Tidak ada data absensi untuk filter ini. Silakan ubah tanggal atau kelas.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-900 text-white font-extrabold uppercase">
-                  <th className="p-3">No</th>
-                  <th className="p-3">Tanggal</th>
-                  <th className="p-3">NIS</th>
-                  <th className="p-3">NISN</th>
-                  <th className="p-3">Nama Siswa</th>
-                  <th className="p-3">Kelas</th>
-                  <th className="p-3">Guru PJOK</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3">Keterangan</th>
+                <tr className="bg-[#181a33] text-zinc-400 font-black uppercase border-b border-[#242747]">
+                  <th className="p-4">No</th>
+                  <th className="p-4">Tanggal</th>
+                  <th className="p-4">NIS</th>
+                  <th className="p-4">NISN</th>
+                  <th className="p-4">Nama Siswa</th>
+                  <th className="p-4">Kelas</th>
+                  <th className="p-4">Guru PJOK</th>
+                  <th className="p-4">Status</th>
+                  <th className="p-4">Keterangan</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 font-medium">
+              <tbody className="divide-y divide-[#242747] font-medium text-zinc-200">
                 {filteredReport.map((row, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50">
-                    <td className="p-3 font-bold text-slate-400">{idx + 1}</td>
-                    <td className="p-3 font-bold">{row.Tanggal}</td>
-                    <td className="p-3 text-slate-600">{row.NIS}</td>
-                    <td className="p-3 font-bold text-emerald-600">{row.NISN}</td>
-                    <td className="p-3 font-extrabold text-slate-900">{row['Nama Siswa']}</td>
-                    <td className="p-3 font-bold text-emerald-600">{row.Kelas}</td>
-                    <td className="p-3 text-slate-700">{row['Guru Olahraga']}</td>
-                    <td className="p-3 font-extrabold">{row.Status}</td>
-                    <td className="p-3 text-slate-500 italic">{row.Keterangan}</td>
+                  <tr key={idx} className="hover:bg-[#1d1f3d]">
+                    <td className="p-4 font-bold text-zinc-500">{idx + 1}</td>
+                    <td className="p-4 font-bold text-white">{row.Tanggal}</td>
+                    <td className="p-4 text-zinc-400">{row.NIS}</td>
+                    <td className="p-4 font-bold text-[#c084fc]">{row.NISN}</td>
+                    <td className="p-4 font-black text-white">{row['Nama Siswa']}</td>
+                    <td className="p-4 font-bold text-sky-400">{row.Kelas}</td>
+                    <td className="p-4 text-zinc-300">{row['Guru Olahraga']}</td>
+                    <td className="p-4 font-black">{row.Status}</td>
+                    <td className="p-4 text-zinc-400 italic">{row.Keterangan}</td>
                   </tr>
                 ))}
               </tbody>

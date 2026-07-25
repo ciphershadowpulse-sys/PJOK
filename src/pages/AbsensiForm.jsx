@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Check, CheckCircle2, UserCheck, Search, Camera, MapPin, QrCode, Save, AlertCircle, RefreshCw, MessageSquare, Users, Info, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Check, CheckCircle2, UserCheck, Search, Camera, MapPin, QrCode, Save, AlertCircle, RefreshCw, MessageSquare, Users, Info, RotateCcw, Sparkles } from 'lucide-react';
 import { getSiswaByKelas, getAbsensiRecord, saveAbsensiBatch } from '../services/storage';
 import QRScannerModal from '../components/QRScannerModal';
 
 const STATUS_OPTIONS = [
-  { key: 'Hadir', label: 'Hadir', color: 'bg-emerald-500 text-white border-emerald-600 shadow-emerald-500/30' },
-  { key: 'Sakit', label: 'Sakit', color: 'bg-amber-500 text-white border-amber-600 shadow-amber-500/30' },
-  { key: 'Izin', label: 'Izin', color: 'bg-sky-500 text-white border-sky-600 shadow-sky-500/30' },
-  { key: 'Alpa', label: 'Alpa', color: 'bg-rose-500 text-white border-rose-600 shadow-rose-500/30' },
-  { key: 'Terlambat', label: 'Terlambat', color: 'bg-purple-500 text-white border-purple-600 shadow-purple-500/30' }
+  { key: 'Hadir', label: 'Hadir', color: 'bg-[#10b981] text-white border-emerald-400 shadow-lg shadow-emerald-500/30' },
+  { key: 'Sakit', label: 'Sakit', color: 'bg-amber-600 text-white border-amber-500 shadow-lg shadow-amber-600/30' },
+  { key: 'Izin', label: 'Izin', color: 'bg-sky-600 text-white border-sky-500 shadow-lg shadow-sky-600/30' },
+  { key: 'Alpa', label: 'Alpa', color: 'bg-rose-600 text-white border-rose-500 shadow-lg shadow-rose-600/30' },
+  { key: 'Terlambat', label: 'Terlambat', color: 'bg-purple-600 text-white border-purple-500 shadow-lg shadow-purple-600/30' }
 ];
 
 export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
@@ -56,7 +56,7 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
 
         if (!students) students = [];
 
-        // 1. Baca cache lokal terlebih dahulu untuk kecepatan dan respon instan saat F5
+        // 1. Baca cache lokal terlebih dahulu
         const cacheKey = `pjok_scanned_cache_${activeJadwal.id}_${tanggalStr}`;
         const cachedRaw = localStorage.getItem(cacheKey);
         let cachedData = null;
@@ -67,7 +67,7 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
         const map = cachedData?.attendanceData || {};
         const initialScannedMap = cachedData?.scannedMap || {};
 
-        // 2. Load record absensi yang sudah tersimpan di database Supabase
+        // 2. Load record absensi tersimpan dari Supabase
         const existing = await getAbsensiRecord(activeJadwal.id, tanggalStr);
 
         // 3. Gabungkan seluruh data yang tersimpan di DB
@@ -133,7 +133,7 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
     loadSiswaAndAbsensi();
   }, [activeJadwal?.id, tanggalStr]);
 
-  // Simpan cache lokal otomatis saat scannedMap atau attendanceData berubah
+  // Simpan cache lokal otomatis
   useEffect(() => {
     if (activeJadwal && activeJadwal.id && Object.keys(scannedMap).length > 0) {
       try {
@@ -258,12 +258,11 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
     }
   };
 
-  // Handle QR Code or NIS/NISN scan match & Auto-save to Supabase
+  // Handle QR Code scan match
   const handleQrCodeScanned = async (scannedText) => {
     const cleanScanned = String(scannedText).trim().toLowerCase();
     const digitsOnly = cleanScanned.replace(/[^0-9]/g, '');
 
-    // 1. Cari siswa pada siswaList kelas aktif
     let found = siswaList.find(s => {
       const sNis = String(s.nis || '').trim().toLowerCase();
       const sNisn = String(s.nisn || '').trim().toLowerCase();
@@ -280,7 +279,6 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
       return false;
     });
 
-    // 2. Jika tidak ditemukan di kelas ini, cari dari seluruh database sekolah (getAllSiswa)
     if (!found) {
       try {
         const { getAllSiswa } = await import('../services/storage');
@@ -303,7 +301,6 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
 
         if (foundInAll) {
           found = foundInAll;
-          // Tambahkan ke siswaList agar tampil secara instan di daftar siswa ter-scan
           setSiswaList(prev => {
             if (prev.some(x => x.id === found.id)) return prev;
             return [...prev, found];
@@ -315,10 +312,8 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
     }
 
     if (found) {
-      // Play Audio Beep Sound Effect
       playSuccessBeep();
 
-      // Mark as scanned & update attendance status
       setScannedMap(prev => ({ ...prev, [found.id]: true }));
       setAttendanceData(prev => ({
         ...prev,
@@ -328,7 +323,6 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
         }
       }));
 
-      // Directly save to Supabase Database
       try {
         const singleRecord = [{
           siswa_id: found.id,
@@ -350,16 +344,16 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
         setTimeout(() => setSuccessMsg(''), 5000);
       } catch (errSave) {
         console.warn('Auto save error:', errSave);
-        setSuccessMsg(`✅ ${found.nama_siswa} HADIR (Tersimpan Lokal: ${errSave.message})`);
+        setSuccessMsg(`✅ ${found.nama_siswa} HADIR (Tersimpan Lokal)`);
         setTimeout(() => setSuccessMsg(''), 5000);
       }
     } else {
-      setSuccessMsg(`⚠️ Result [${scannedText}] tidak cocok dengan NIS/NISN/QR siswa mana pun.`);
+      setSuccessMsg(`⚠️ Result [${scannedText}] tidak cocok dengan NIS/NISN/QR siswa.`);
       setTimeout(() => setSuccessMsg(''), 5000);
     }
   };
 
-  // Save Attendance Record for all scanned/processed students
+  // Save Attendance Record
   const handleSave = async () => {
     setSaving(true);
     setSuccessMsg('');
@@ -393,17 +387,16 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
         userId: user?.id || 'guru'
       });
 
-      setSuccessMsg(`🎉 Berhasil menyimpan ${records.length} data absensi siswa ke Database Supabase!`);
+      setSuccessMsg(`🎉 Berhasil menyimpan ${records.length} data absensi siswa!`);
       setTimeout(() => setSuccessMsg(''), 5000);
     } catch (err) {
       console.error('Gagal menyimpan absensi:', err);
-      alert('Gagal menyimpan absensi ke database: ' + (err.message || err));
+      alert('Gagal menyimpan absensi: ' + (err.message || err));
     } finally {
       setSaving(false);
     }
   };
 
-  // Counts & Filtered list based on viewMode
   const scannedSiswaIds = Object.keys(scannedMap).filter(id => scannedMap[id]);
   const scannedSiswaCount = scannedSiswaIds.length;
   const unscannedSiswaCount = siswaList.length - scannedSiswaCount;
@@ -431,34 +424,37 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
   });
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6 pb-24">
+    <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-6 pb-28 animate-fade-in">
       
       {/* Top Navigation */}
       <div className="flex items-center justify-between">
         <button
           onClick={onBack}
-          className="inline-flex items-center space-x-2 text-slate-700 bg-white hover:bg-slate-100 px-4 py-2.5 rounded-2xl border border-slate-200 text-sm font-extrabold shadow-sm transition-all"
+          className="inline-flex items-center space-x-2 text-zinc-300 bg-[#121324] hover:bg-[#1a1c38] hover:text-white px-4 py-2.5 rounded-2xl border border-[#242747] text-sm font-black transition-all duration-300 shadow-sm cursor-pointer"
         >
-          <ArrowLeft className="w-4 h-4" />
+          <ArrowLeft className="w-4 h-4 text-[#c084fc]" />
           <span>Kembali ke Dashboard</span>
         </button>
 
-        <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
+        <span className="text-xs font-black text-zinc-300 bg-[#121324] px-4 py-2 rounded-2xl border border-[#242747]">
           Tanggal: {currentTime.tanggalFormatted}
         </span>
       </div>
 
-      {/* Class Info Header Card */}
-      <div className="bg-slate-900 text-white p-6 rounded-3xl border border-slate-800 shadow-xl relative overflow-hidden">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Class Info Header Card (Finova Dark Violet Glow) */}
+      <div className="bg-gradient-to-br from-[#12132a] via-[#1a1c3b] to-[#101124] text-white p-6 sm:p-8 rounded-3xl border border-[#242747] shadow-2xl relative overflow-hidden">
+        <div className="absolute right-0 top-0 w-64 h-64 bg-[#8b5cf6]/20 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5 relative z-10">
           <div>
-            <span className="bg-emerald-500/20 text-emerald-300 text-xs font-bold px-3 py-1 rounded-full border border-emerald-500/30">
+            <span className="bg-[#8b5cf6]/20 text-[#c084fc] text-xs font-black px-3.5 py-1 rounded-full border border-[#8b5cf6]/30 tracking-wider flex items-center gap-1.5 w-fit">
+              <Sparkles className="w-3.5 h-3.5" />
               ABSENSI LAPANGAN PJOK
             </span>
-            <h1 className="text-2xl sm:text-3xl font-black mt-1">
-              Kelas {jadwal.nama_kelas}
+            <h1 className="text-2xl sm:text-4xl font-black mt-2 tracking-tight">
+              Kelas <span className="bg-gradient-to-r from-[#c084fc] via-[#a855f7] to-[#f43f5e] bg-clip-text text-transparent">{jadwal.nama_kelas}</span>
             </h1>
-            <p className="text-xs text-slate-300 font-medium">
+            <p className="text-xs text-zinc-400 font-medium mt-1">
               Jam: {jadwal.jam_mulai} - {jadwal.jam_selesai} WIB | Lokasi: {jadwal.lokasi || 'Lapangan Utama'}
             </p>
           </div>
@@ -466,65 +462,65 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
           {/* Quick All Present Button */}
           <button
             onClick={handleSemuaHadir}
-            className="py-3 px-5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-extrabold text-sm rounded-2xl shadow-lg shadow-emerald-500/30 flex items-center justify-center space-x-2 transition-all active:scale-95 cursor-pointer"
+            className="py-3.5 px-6 bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] hover:from-[#9333ea] hover:to-[#581c87] text-white font-black text-xs sm:text-sm rounded-2xl shadow-xl shadow-[#8b5cf6]/35 flex items-center justify-center space-x-2 transition-all hover:scale-105 active:scale-95 cursor-pointer"
           >
-            <UserCheck className="w-5 h-5" />
+            <UserCheck className="w-5 h-5 stroke-[2.5]" />
             <span>SET SEMUA HADIR</span>
           </button>
         </div>
       </div>
 
-      {/* PRIMARY SCAN METRICS BANNER (KESELURUHAN, DI-SCAN, BELUM DI-SCAN) */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-md space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-          <div className="flex items-center space-x-2">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center font-black text-sm">
+      {/* PRIMARY SCAN METRICS BANNER */}
+      <div className="bg-[#121324] p-6 rounded-3xl border border-[#242747] shadow-xl space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#242747] pb-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#8b5cf6]/20 text-[#c084fc] border border-[#8b5cf6]/30 flex items-center justify-center font-black text-lg">
               📊
             </div>
             <div>
-              <h3 className="text-sm font-black text-slate-900">Ringkasan Scan Kelas {activeJadwal?.nama_kelas}</h3>
-              <p className="text-xs text-slate-500 font-medium">Status scanning absensi murid real-time</p>
+              <h3 className="text-sm font-black text-white">Ringkasan Scan Kelas {activeJadwal?.nama_kelas}</h3>
+              <p className="text-xs text-zinc-400 font-medium">Status scanning absensi murid real-time</p>
             </div>
           </div>
-          <div className="text-xs font-black text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full border border-emerald-200 self-start sm:self-auto">
+          <div className="text-xs font-black text-[#c084fc] bg-[#8b5cf6]/15 px-4 py-2 rounded-full border border-[#8b5cf6]/30 self-start sm:self-auto shadow-sm">
             {siswaList.length > 0 ? Math.round((scannedSiswaCount / siswaList.length) * 100) : 0}% Selesai Di-Scan
           </div>
         </div>
 
         {/* 3 Main Stat Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Card 1: Keseluruhan Murid */}
-          <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-4 rounded-2xl shadow-sm border border-slate-700 flex items-center justify-between">
+          <div className="bg-[#181a33] text-white p-5 rounded-2xl shadow-md border border-[#242747] hover:border-[#8b5cf6]/50 transition-all flex items-center justify-between group">
             <div>
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Keseluruhan Murid</div>
-              <div className="text-2xl sm:text-3xl font-black text-white mt-0.5">{siswaList.length} <span className="text-xs font-semibold text-slate-400">Siswa</span></div>
-              <div className="text-[10px] text-slate-300 font-medium mt-0.5">Terdaftar di Kelas {activeJadwal?.nama_kelas}</div>
+              <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider">Keseluruhan Murid</div>
+              <div className="text-2xl sm:text-3xl font-black text-white mt-1">{siswaList.length} <span className="text-xs font-semibold text-zinc-400">Siswa</span></div>
+              <div className="text-[10px] text-zinc-400 font-medium mt-1">Terdaftar di Kelas {activeJadwal?.nama_kelas}</div>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center text-2xl font-black">
+            <div className="w-12 h-12 rounded-2xl bg-[#1d1f3d] border border-[#242747] flex items-center justify-center text-2xl font-black group-hover:scale-110 transition-transform">
               👥
             </div>
           </div>
 
           {/* Card 2: Berhasil Di-Scan */}
-          <div className="bg-gradient-to-br from-emerald-600 to-teal-700 text-white p-4 rounded-2xl shadow-sm border border-emerald-500 flex items-center justify-between">
+          <div className="bg-gradient-to-br from-emerald-600/20 to-teal-700/20 text-white p-5 rounded-2xl shadow-md border border-emerald-500/40 flex items-center justify-between group">
             <div>
-              <div className="text-[11px] font-bold text-emerald-100 uppercase tracking-wider">Berhasil Di-Scan</div>
-              <div className="text-2xl sm:text-3xl font-black text-white mt-0.5">{scannedSiswaCount} <span className="text-xs font-semibold text-emerald-200">Siswa</span></div>
-              <div className="text-[10px] text-emerald-100 font-medium mt-0.5">Sudah absensi hari ini</div>
+              <div className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider">Berhasil Di-Scan</div>
+              <div className="text-2xl sm:text-3xl font-black text-emerald-400 mt-1">{scannedSiswaCount} <span className="text-xs font-semibold text-emerald-300">Siswa</span></div>
+              <div className="text-[10px] text-emerald-300 font-medium mt-1">Sudah absensi hari ini</div>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-2xl font-black">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-2xl font-black group-hover:scale-110 transition-transform">
               ✅
             </div>
           </div>
 
           {/* Card 3: Belum Di-Scan */}
-          <div className="bg-gradient-to-br from-amber-500 to-orange-600 text-white p-4 rounded-2xl shadow-sm border border-amber-400 flex items-center justify-between">
+          <div className="bg-gradient-to-br from-[#8b5cf6]/20 to-amber-600/20 text-white p-5 rounded-2xl shadow-md border border-[#8b5cf6]/40 flex items-center justify-between group">
             <div>
-              <div className="text-[11px] font-bold text-amber-100 uppercase tracking-wider">Belum Di-Scan</div>
-              <div className="text-2xl sm:text-3xl font-black text-white mt-0.5">{unscannedSiswaCount} <span className="text-xs font-semibold text-amber-200">Siswa</span></div>
-              <div className="text-[10px] text-amber-100 font-medium mt-0.5">Menunggu scan QR / manual</div>
+              <div className="text-[11px] font-bold text-purple-300 uppercase tracking-wider">Belum Di-Scan</div>
+              <div className="text-2xl sm:text-3xl font-black text-[#c084fc] mt-1">{unscannedSiswaCount} <span className="text-xs font-semibold text-purple-300">Siswa</span></div>
+              <div className="text-[10px] text-purple-300 font-medium mt-1">Menunggu scan QR / manual</div>
             </div>
-            <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center text-2xl font-black">
+            <div className="w-12 h-12 rounded-2xl bg-[#8b5cf6]/20 border border-[#8b5cf6]/30 flex items-center justify-center text-2xl font-black group-hover:scale-110 transition-transform">
               ⏳
             </div>
           </div>
@@ -532,9 +528,9 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
 
         {/* Progress Bar */}
         <div className="space-y-1 pt-1">
-          <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden border border-slate-200 p-0.5">
+          <div className="w-full h-3 bg-[#0b0c16] rounded-full overflow-hidden border border-[#242747] p-0.5">
             <div
-              className="h-full bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-400 rounded-full transition-all duration-500"
+              className="h-full bg-gradient-to-r from-[#a855f7] via-[#8b5cf6] to-[#f43f5e] rounded-full transition-all duration-500"
               style={{ width: `${siswaList.length > 0 ? Math.round((scannedSiswaCount / siswaList.length) * 100) : 0}%` }}
             ></div>
           </div>
@@ -543,69 +539,69 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
 
       {/* Status Breakdown Counters */}
       <div className="grid grid-cols-5 gap-2 sm:gap-3 text-center">
-        <div className="bg-emerald-500/10 border border-emerald-500/30 p-2.5 sm:p-3 rounded-2xl">
-          <div className="text-lg sm:text-2xl font-black text-emerald-600">{counts.Hadir}</div>
-          <div className="text-[10px] sm:text-xs font-bold text-emerald-700 uppercase">Hadir</div>
+        <div className="bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-2xl">
+          <div className="text-lg sm:text-2xl font-black text-emerald-400">{counts.Hadir}</div>
+          <div className="text-[10px] sm:text-xs font-bold text-emerald-300 uppercase">Hadir</div>
         </div>
-        <div className="bg-amber-500/10 border border-amber-500/30 p-2.5 sm:p-3 rounded-2xl">
-          <div className="text-lg sm:text-2xl font-black text-amber-600">{counts.Sakit}</div>
-          <div className="text-[10px] sm:text-xs font-bold text-amber-700 uppercase">Sakit</div>
+        <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-2xl">
+          <div className="text-lg sm:text-2xl font-black text-amber-400">{counts.Sakit}</div>
+          <div className="text-[10px] sm:text-xs font-bold text-amber-300 uppercase">Sakit</div>
         </div>
-        <div className="bg-sky-500/10 border border-sky-500/30 p-2.5 sm:p-3 rounded-2xl">
-          <div className="text-lg sm:text-2xl font-black text-sky-600">{counts.Izin}</div>
-          <div className="text-[10px] sm:text-xs font-bold text-sky-700 uppercase">Izin</div>
+        <div className="bg-sky-500/10 border border-sky-500/20 p-3 rounded-2xl">
+          <div className="text-lg sm:text-2xl font-black text-sky-400">{counts.Izin}</div>
+          <div className="text-[10px] sm:text-xs font-bold text-sky-300 uppercase">Izin</div>
         </div>
-        <div className="bg-rose-500/10 border border-rose-500/30 p-2.5 sm:p-3 rounded-2xl">
-          <div className="text-lg sm:text-2xl font-black text-rose-600">{counts.Alpa}</div>
-          <div className="text-[10px] sm:text-xs font-bold text-rose-700 uppercase">Alpa</div>
+        <div className="bg-rose-500/10 border border-rose-500/20 p-3 rounded-2xl">
+          <div className="text-lg sm:text-2xl font-black text-rose-400">{counts.Alpa}</div>
+          <div className="text-[10px] sm:text-xs font-bold text-rose-300 uppercase">Alpa</div>
         </div>
-        <div className="bg-purple-500/10 border border-purple-500/30 p-2.5 sm:p-3 rounded-2xl">
-          <div className="text-lg sm:text-2xl font-black text-purple-600">{counts.Terlambat}</div>
-          <div className="text-[10px] sm:text-xs font-bold text-purple-700 uppercase">Terlambat</div>
+        <div className="bg-purple-500/10 border border-purple-500/20 p-3 rounded-2xl">
+          <div className="text-lg sm:text-2xl font-black text-purple-400">{counts.Terlambat}</div>
+          <div className="text-[10px] sm:text-xs font-bold text-purple-300 uppercase">Terlambat</div>
         </div>
       </div>
 
       {/* Field Media & GPS Attachment Card */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-4">
-        <h3 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+      <div className="bg-[#121324] p-5 rounded-3xl border border-[#242747] shadow-xl space-y-4">
+        <h3 className="text-xs font-black text-zinc-300 uppercase tracking-wider">
           Dokumentasi Lapangan & Lokasi Guru (Opsional)
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Photo Documentation */}
-          <div className="flex items-center space-x-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
-            <label className="cursor-pointer bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all">
-              <Camera className="w-4 h-4 text-emerald-400" />
+          <div className="flex items-center space-x-3 bg-[#181a33] p-4 rounded-2xl border border-[#242747]">
+            <label className="cursor-pointer bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] hover:scale-105 text-white px-4 py-2.5 rounded-xl text-xs font-black flex items-center space-x-2 transition-all shadow-md">
+              <Camera className="w-4 h-4 text-white" />
               <span>Ambil Foto Olahraga</span>
               <input type="file" accept="image/*" capture="environment" onChange={handlePhotoCapture} className="hidden" />
             </label>
             {photoData ? (
               <div className="flex items-center space-x-2">
-                <img src={photoData} alt="Foto Olahraga" className="w-10 h-10 object-cover rounded-lg border border-slate-300" />
-                <span className="text-[11px] text-emerald-600 font-bold">Foto Terlampir</span>
+                <img src={photoData} alt="Foto Olahraga" className="w-10 h-10 object-cover rounded-xl border border-[#8b5cf6]/50" />
+                <span className="text-[11px] text-emerald-400 font-bold">Foto Terlampir</span>
               </div>
             ) : (
-              <span className="text-[11px] text-slate-400">Belum ada foto</span>
+              <span className="text-[11px] text-zinc-400 font-medium">Belum ada foto</span>
             )}
           </div>
 
           {/* GPS Location Capture */}
-          <div className="flex items-center justify-between bg-slate-50 p-3.5 rounded-2xl border border-slate-200">
+          <div className="flex items-center justify-between bg-[#181a33] p-4 rounded-2xl border border-[#242747]">
             <button
               type="button"
               onClick={handleGetLocation}
               disabled={gettingGps}
-              className="bg-slate-900 hover:bg-slate-800 text-white px-3.5 py-2 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition-all cursor-pointer"
+              className="bg-[#1d1f3d] hover:bg-[#25284d] text-zinc-100 px-4 py-2.5 rounded-xl text-xs font-black flex items-center space-x-2 transition-all cursor-pointer border border-[#242747]"
             >
               <MapPin className="w-4 h-4 text-sky-400" />
               <span>{gettingGps ? 'Memproses GPS...' : 'Tag Lokasi GPS'}</span>
             </button>
             {gpsLocation ? (
-              <span className="text-[11px] text-sky-600 font-bold">
+              <span className="text-[11px] text-sky-400 font-bold">
                 Lat: {gpsLocation.lat.toFixed(4)}, Lng: {gpsLocation.lng.toFixed(4)}
               </span>
             ) : (
-              <span className="text-[11px] text-slate-400">Belum di-tag</span>
+              <span className="text-[11px] text-zinc-400 font-medium">Belum di-tag</span>
             )}
           </div>
         </div>
@@ -614,47 +610,48 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
       {/* Search & QR Scanner Bar */}
       <div className="flex items-center space-x-3">
         <div className="relative flex-1">
-          <Search className="w-5 h-5 absolute left-3.5 top-3 text-slate-400" />
+          <Search className="w-5 h-5 absolute left-4 top-3.5 text-zinc-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Cari siswa ter-scan (Nama atau NIS)..."
-            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm"
+            className="w-full pl-12 pr-4 py-3.5 bg-[#121324] border border-[#242747] rounded-2xl text-sm font-medium text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#8b5cf6] shadow-xl"
           />
         </div>
 
         <button
           onClick={() => setShowQrModal(true)}
-          className="p-3 bg-slate-900 hover:bg-slate-800 text-emerald-400 rounded-2xl shadow-sm border border-slate-800 flex items-center space-x-1.5 transition-all cursor-pointer"
+          className="px-5 py-3.5 bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] hover:from-[#9333ea] hover:to-[#581c87] text-white rounded-2xl shadow-lg shadow-[#8b5cf6]/35 flex items-center space-x-2 transition-all hover:scale-105 active:scale-95 cursor-pointer font-black text-xs"
           title="Scan QR Code Kartu Siswa"
         >
           <QrCode className="w-5 h-5" />
-          <span className="text-xs font-bold text-white hidden sm:inline">Scan QR Code</span>
+          <span className="hidden sm:inline">Scan QR Code</span>
         </button>
       </div>
 
       {/* Title Header & View Mode Toggles for Students List */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+      <div className="bg-[#121324] p-5 sm:p-6 rounded-3xl border border-[#242747] shadow-xl space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#242747] pb-4">
           <div>
-            <h3 className="text-sm font-black text-slate-900 flex items-center space-x-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+            <h3 className="text-sm font-black text-white flex items-center space-x-2">
+              <CheckCircle2 className="w-5 h-5 text-[#c084fc]" />
               <span>Progress Absensi Lapangan</span>
             </h3>
-            <p className="text-xs text-slate-500 font-medium mt-0.5">
-              Selesai Scan: <span className="font-extrabold text-emerald-700">{scannedSiswaCount} Siswa</span> | Sisa Belum Scan: <span className="font-extrabold text-amber-700">{unscannedSiswaCount} Siswa</span> | Total: <span className="font-extrabold text-slate-900">{siswaList.length} Siswa</span>
+            <p className="text-xs text-zinc-400 font-medium mt-1">
+              Selesai Scan: <span className="font-black text-[#c084fc]">{scannedSiswaCount} Siswa</span> | Sisa Belum Scan: <span className="font-black text-amber-400">{unscannedSiswaCount} Siswa</span> | Total: <span className="font-black text-white">{siswaList.length} Siswa</span>
             </p>
           </div>
 
-          <div className="flex items-center space-x-1 bg-slate-100 p-1.5 rounded-2xl text-[11px] font-extrabold">
+          {/* TAB TOGGLES */}
+          <div className="flex items-center space-x-1.5 bg-[#181a33] p-1.5 rounded-2xl text-[11px] font-black border border-[#242747]">
             <button
               type="button"
               onClick={() => setViewMode('scanned_only')}
-              className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 ${
+              className={`px-4 py-2 rounded-xl transition-all duration-300 cursor-pointer flex items-center space-x-1.5 ${
                 viewMode === 'scanned_only'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  ? 'bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] text-white shadow-lg shadow-[#8b5cf6]/35 scale-[1.02]'
+                  : 'text-zinc-400 hover:text-white hover:bg-[#25284d]'
               }`}
               title="Fungsi: Menampilkan daftar siswa yang SUDAH selesai di-scan"
             >
@@ -664,10 +661,10 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
             <button
               type="button"
               onClick={() => setViewMode('unscanned')}
-              className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 ${
+              className={`px-4 py-2 rounded-xl transition-all duration-300 cursor-pointer flex items-center space-x-1.5 ${
                 viewMode === 'unscanned'
-                  ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  ? 'bg-amber-600 text-white shadow-lg shadow-amber-600/30 scale-[1.02]'
+                  : 'text-zinc-400 hover:text-white hover:bg-[#25284d]'
               }`}
               title="Fungsi: Menampilkan sisa siswa yang BELUM di-scan"
             >
@@ -677,10 +674,10 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
             <button
               type="button"
               onClick={() => setViewMode('all')}
-              className={`px-3.5 py-2 rounded-xl transition-all cursor-pointer flex items-center space-x-1.5 ${
+              className={`px-4 py-2 rounded-xl transition-all duration-300 cursor-pointer flex items-center space-x-1.5 ${
                 viewMode === 'all'
-                  ? 'bg-slate-900 text-white shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  ? 'bg-[#242747] text-white shadow-sm scale-[1.02]'
+                  : 'text-zinc-400 hover:text-white hover:bg-[#25284d]'
               }`}
               title="Fungsi: Menampilkan SELURUH siswa kelas secara lengkap"
             >
@@ -690,15 +687,9 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
           </div>
         </div>
 
-        {/* Tab Functionality & Usage Explanation Banner */}
-        <div className={`text-xs p-3 rounded-2xl border font-medium flex items-center space-x-2 animate-fade-in ${
-          viewMode === 'scanned_only'
-            ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-            : viewMode === 'unscanned'
-            ? 'bg-amber-50 border-amber-200 text-amber-900'
-            : 'bg-slate-50 border-slate-200 text-slate-800'
-        }`}>
-          <Info className="w-4 h-4 flex-shrink-0 text-current" />
+        {/* Usage Explanation Banner */}
+        <div className="text-xs p-3.5 rounded-2xl border border-[#242747] bg-[#181a33] text-zinc-300 font-medium flex items-center space-x-3">
+          <Info className="w-4 h-4 flex-shrink-0 text-[#c084fc]" />
           <span>
             {viewMode === 'scanned_only' && (
               <><strong>Fungsi & Kegunaan Tab Selesai Scan:</strong> Menampilkan siswa yang sudah berhasil di-scan atau diabsen. Gunakan tab ini untuk meninjau status dan menambah catatan khusus.</>
@@ -715,28 +706,28 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
 
       {/* Student List & Touch-Friendly Status Buttons */}
       {loading ? (
-        <div className="bg-white p-12 rounded-3xl text-center text-slate-500 border border-slate-200">
-          <RefreshCw className="w-8 h-8 animate-spin mx-auto text-emerald-500 mb-2" />
-          <p className="text-sm font-semibold">Memuat daftar siswa kelas...</p>
+        <div className="bg-[#121324] p-12 rounded-3xl text-center text-zinc-400 border border-[#242747]">
+          <RefreshCw className="w-8 h-8 animate-spin mx-auto text-[#a855f7] mb-3" />
+          <p className="text-sm font-bold">Memuat daftar siswa kelas...</p>
         </div>
       ) : filteredSiswa.length === 0 ? (
-        <div className="bg-white p-10 rounded-3xl text-center border-2 border-dashed border-slate-200 space-y-3">
+        <div className="bg-[#121324] p-10 rounded-3xl text-center border-2 border-dashed border-[#242747] space-y-4">
           {viewMode === 'scanned_only' ? (
             <>
-              <div className="w-16 h-16 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mx-auto border border-amber-200">
+              <div className="w-16 h-16 bg-[#8b5cf6]/15 text-[#c084fc] rounded-2xl flex items-center justify-center mx-auto border border-[#8b5cf6]/30">
                 <QrCode className="w-8 h-8" />
               </div>
-              <h3 className="text-base font-extrabold text-slate-800">
+              <h3 className="text-base font-black text-white">
                 Belum Ada Siswa Selesai Di-Scan (0 dari {siswaList.length} Siswa)
               </h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto font-medium">
+              <p className="text-xs text-zinc-400 max-w-sm mx-auto font-medium">
                 Masih ada {unscannedSiswaCount} siswa yang belum di-scan. Silakan buka kamera untuk scan QR Code atau beralih ke tab "Belum Scan".
               </p>
-              <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setShowQrModal(true)}
-                  className="inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-5 py-3 rounded-2xl shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+                  className="inline-flex items-center space-x-2 bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] hover:scale-105 text-white font-black text-xs px-6 py-3.5 rounded-2xl shadow-lg shadow-[#8b5cf6]/35 transition-all cursor-pointer"
                 >
                   <QrCode className="w-4 h-4" />
                   <span>Buka Kamera Scan QR Code</span>
@@ -744,7 +735,7 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
                 <button
                   type="button"
                   onClick={() => setViewMode('unscanned')}
-                  className="inline-flex items-center space-x-2 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs px-5 py-3 rounded-2xl shadow-md transition-all cursor-pointer"
+                  className="inline-flex items-center space-x-2 bg-[#181a33] hover:bg-[#25284d] text-zinc-200 font-black text-xs px-6 py-3.5 rounded-2xl border border-[#242747] transition-all cursor-pointer"
                 >
                   <span>Lihat {unscannedSiswaCount} Siswa Belum Scan</span>
                 </button>
@@ -752,39 +743,39 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
             </>
           ) : viewMode === 'unscanned' ? (
             <>
-              <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto border border-emerald-200">
+              <div className="w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto border border-emerald-500/20">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
-              <h3 className="text-base font-extrabold text-slate-800">
+              <h3 className="text-base font-black text-white">
                 🎉 Semuanya Sudah Di-Scan! ({scannedSiswaCount} dari {siswaList.length} Siswa)
               </h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto font-medium">
+              <p className="text-xs text-zinc-400 max-w-sm mx-auto font-medium">
                 Seluruh {siswaList.length} siswa kelas ini telah selesai di-scan dan terisi absensinya.
               </p>
               <button
                 type="button"
                 onClick={() => setViewMode('scanned_only')}
-                className="mt-2 inline-flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs px-5 py-3 rounded-2xl shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+                className="mt-2 inline-flex items-center space-x-2 bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] text-white font-black text-xs px-6 py-3.5 rounded-2xl shadow-lg shadow-[#8b5cf6]/35 transition-all cursor-pointer"
               >
                 <span>Lihat {scannedSiswaCount} Siswa Selesai Scan</span>
               </button>
             </>
           ) : (
             <>
-              <div className="w-16 h-16 bg-slate-100 text-slate-500 rounded-full flex items-center justify-center mx-auto">
+              <div className="w-16 h-16 bg-[#181a33] text-zinc-400 rounded-2xl flex items-center justify-center mx-auto border border-[#242747]">
                 <Users className="w-8 h-8" />
               </div>
-              <h3 className="text-base font-extrabold text-slate-800">
+              <h3 className="text-base font-black text-white">
                 Tidak Ada Siswa Cocok
               </h3>
-              <p className="text-xs text-slate-500 max-w-sm mx-auto font-medium">
+              <p className="text-xs text-zinc-400 max-w-sm mx-auto font-medium">
                 Tidak ada siswa yang sesuai dengan filter atau kata kunci pencarian Anda.
               </p>
             </>
           )}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {filteredSiswa.map((siswa, idx) => {
             const currentStatus = attendanceData[siswa.id]?.status || 'Hadir';
             const currentNote = attendanceData[siswa.id]?.keterangan || '';
@@ -793,40 +784,40 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
             return (
               <div
                 key={siswa.id}
-                className={`bg-white border rounded-3xl p-4 sm:p-5 shadow-md hover:shadow-lg transition-all space-y-3 ${
-                  isScanned ? 'border-emerald-300 ring-1 ring-emerald-500/20' : 'border-slate-200 opacity-90'
+                className={`bg-[#121324] border rounded-3xl p-5 sm:p-6 shadow-xl transition-all duration-300 space-y-4 hover:border-[#8b5cf6]/50 ${
+                  isScanned ? 'border-emerald-500/50 ring-1 ring-emerald-500/20' : 'border-[#242747]'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
-                    <span className={`w-8 h-8 rounded-full font-extrabold text-xs flex items-center justify-center border ${
-                      isScanned ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-slate-100 text-slate-700 border-slate-200'
+                    <span className={`w-9 h-9 rounded-2xl font-black text-xs flex items-center justify-center border ${
+                      isScanned ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40' : 'bg-[#181a33] text-zinc-400 border-[#242747]'
                     }`}>
                       {idx + 1}
                     </span>
                     <div>
-                      <div className="flex items-center space-x-2">
-                        <h4 className="text-base font-extrabold text-slate-900 leading-tight">
+                      <div className="flex items-center space-x-2.5">
+                        <h4 className="text-base font-black text-white leading-tight">
                           {siswa.nama_siswa}
                         </h4>
                         {isScanned ? (
-                          <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-700 border border-emerald-300 text-[10px] font-extrabold rounded-full">
+                          <span className="px-2.5 py-0.5 bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-black rounded-full">
                             ✓ Di-Scan
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 bg-amber-500/10 text-amber-700 border border-amber-300 text-[10px] font-extrabold rounded-full">
+                          <span className="px-2.5 py-0.5 bg-[#8b5cf6]/20 text-[#c084fc] border border-[#8b5cf6]/30 text-[10px] font-black rounded-full">
                             Belum Di-Scan
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-slate-500 font-medium mt-0.5">
-                        NIS: <span className="font-bold text-slate-700">{siswa.nis || '-'}</span> | NISN: <span className="font-bold text-emerald-700">{siswa.nisn || '-'}</span> | Gender: <span className="font-bold">{siswa.jenis_kelamin}</span>
+                      <p className="text-xs text-zinc-400 font-medium mt-1">
+                        NIS: <span className="font-bold text-zinc-200">{siswa.nis || '-'}</span> | NISN: <span className="font-bold text-[#c084fc]">{siswa.nisn || '-'}</span> | Gender: <span className="font-bold text-zinc-300">{siswa.jenis_kelamin}</span>
                       </p>
                     </div>
                   </div>
 
                   <div className="flex items-center space-x-2">
-                    <span className="text-xs font-bold text-slate-400 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
+                    <span className="text-xs font-bold text-zinc-400 bg-[#181a33] px-3 py-1 rounded-xl border border-[#242747]">
                       {siswa.qr_code || `QR-${siswa.nis}`}
                     </span>
 
@@ -834,7 +825,7 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
                       <button
                         type="button"
                         onClick={() => handleUnscanSiswa(siswa.id)}
-                        className="text-[10px] font-bold text-slate-500 hover:text-rose-600 bg-slate-100 hover:bg-rose-50 px-2 py-1 rounded-lg border border-slate-200 transition-all flex items-center space-x-1"
+                        className="text-[10px] font-bold text-zinc-400 hover:text-rose-400 bg-[#181a33] hover:bg-rose-500/10 px-2.5 py-1 rounded-xl border border-[#242747] transition-all flex items-center space-x-1 cursor-pointer"
                         title="Batal Scan siswa ini"
                       >
                         <RotateCcw className="w-3 h-3" />
@@ -844,8 +835,8 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
                   </div>
                 </div>
 
-                {/* Touch Buttons Grid */}
-                <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+                {/* Touch Status Buttons Grid */}
+                <div className="grid grid-cols-5 gap-2">
                   {STATUS_OPTIONS.map((opt) => {
                     const isSelected = currentStatus === opt.key;
                     return (
@@ -853,10 +844,10 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
                         key={opt.key}
                         type="button"
                         onClick={() => handleStatusChange(siswa.id, opt.key)}
-                        className={`py-3 sm:py-3.5 px-1 rounded-2xl text-xs font-extrabold transition-all border flex flex-col items-center justify-center space-y-1 active:scale-95 cursor-pointer ${
+                        className={`py-3 sm:py-3.5 px-1 rounded-2xl text-xs font-black transition-all border flex flex-col items-center justify-center space-y-1 active:scale-95 cursor-pointer ${
                           isSelected
-                            ? opt.color + ' ring-2 ring-slate-900/10'
-                            : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                            ? opt.color + ' scale-105'
+                            : 'bg-[#181a33] border-[#242747] text-zinc-400 hover:text-white hover:bg-[#202347]'
                         }`}
                       >
                         <span>{opt.label}</span>
@@ -866,14 +857,14 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
                   })}
                 </div>
 
-                {/* Notes Input for physical condition / comments */}
+                {/* Notes Input */}
                 <div className="relative pt-1">
                   <input
                     type="text"
                     value={currentNote}
                     onChange={(e) => handleKeteranganChange(siswa.id, e.target.value)}
                     placeholder="Catatan kondisi siswa (contoh: cedera engkel, pusing, izin lari)..."
-                    className="w-full text-xs px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    className="w-full text-xs px-4 py-2.5 bg-[#181a33] border border-[#242747] rounded-xl font-medium text-white placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-[#8b5cf6]"
                   />
                 </div>
               </div>
@@ -883,15 +874,15 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
       )}
 
       {/* Floating Save Bar */}
-      <div className="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 p-4 shadow-2xl">
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#0e0f1d]/95 backdrop-blur-xl border-t border-[#242747] p-4 shadow-2xl">
         <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
-          <div className="text-white text-xs hidden sm:block">
-            <span className="font-bold text-emerald-400">{scannedSiswaCount} dari {siswaList.length} Siswa</span> ter-scan & tersimpan ke Supabase.
+          <div className="text-zinc-300 text-xs hidden sm:block font-medium">
+            <span className="font-black text-[#c084fc]">{scannedSiswaCount} dari {siswaList.length} Siswa</span> ter-scan & tersimpan ke Supabase.
           </div>
 
           {successMsg && (
-            <div className="text-xs font-bold text-emerald-300 bg-emerald-500/20 px-3 py-1.5 rounded-xl border border-emerald-500/40 animate-fade-in flex items-center gap-1">
-              <CheckCircle2 className="w-4 h-4" />
+            <div className="text-xs font-bold text-emerald-300 bg-emerald-500/20 px-4 py-2 rounded-2xl border border-emerald-500/40 animate-fade-in flex items-center gap-1.5">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
               <span>{successMsg}</span>
             </div>
           )}
@@ -899,7 +890,7 @@ export default function AbsensiForm({ jadwal, currentTime, user, onBack }) {
           <button
             onClick={handleSave}
             disabled={saving}
-            className="w-full sm:w-auto py-3.5 px-8 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white font-black text-sm rounded-2xl shadow-xl shadow-emerald-600/40 flex items-center justify-center space-x-2 transition-all disabled:opacity-50 cursor-pointer"
+            className="w-full sm:w-auto py-3.5 px-8 bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] hover:from-[#9333ea] hover:to-[#581c87] active:scale-95 text-white font-black text-sm rounded-2xl shadow-xl shadow-[#8b5cf6]/40 flex items-center justify-center space-x-2 transition-all disabled:opacity-50 cursor-pointer"
           >
             {saving ? (
               <span>Menyimpan...</span>

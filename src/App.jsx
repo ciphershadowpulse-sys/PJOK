@@ -12,6 +12,8 @@ import { supabase, isSupabaseConfigured } from './lib/supabase';
 export default function App() {
   const [user, setUser] = useState(null);
   const [currentView, setCurrentView] = useState('login'); // Protected routes: 'dashboard', 'absensi_form', 'riwayat', 'kelola', 'laporan'
+  const [theme, setTheme] = useState(() => localStorage.getItem('pjok_theme') || 'dark');
+  
   const [selectedJadwal, setSelectedJadwal] = useState(() => {
     try {
       const saved = localStorage.getItem('pjok_active_jadwal');
@@ -23,26 +25,36 @@ export default function App() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [realtimeClock, setRealtimeClock] = useState(new Date());
 
+  // Dark Mode / Light Mode Theme Handler
+  useEffect(() => {
+    if (theme === 'light') {
+      document.body.classList.add('light-mode');
+    } else {
+      document.body.classList.remove('light-mode');
+    }
+    localStorage.setItem('pjok_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
   // 1. Restore & Listen to Session (LocalStorage & Supabase Auth)
   useEffect(() => {
-    // 1a. Instant restore dari LocalStorage saat refresh halaman
     const savedUser = localStorage.getItem('pjok_user_session');
-    const savedView = localStorage.getItem('pjok_active_view') || 'dashboard';
-    const savedJadwal = localStorage.getItem('pjok_active_jadwal');
 
     if (savedUser) {
       try {
         const parsedUser = JSON.parse(savedUser);
         if (parsedUser && parsedUser.id) {
           setUser(parsedUser);
-          setCurrentView('dashboard'); // Kembali ke halaman dashboard saat refresh
+          setCurrentView('dashboard');
         }
       } catch (e) {
         console.warn('LocalStorage restore note:', e);
       }
     }
 
-    // 1b. Restore & Listen to Supabase Auth Session
     async function initAuthSession() {
       if (!isSupabaseConfigured) return;
 
@@ -63,7 +75,6 @@ export default function App() {
         console.warn('Error fetching Supabase auth session:', err);
       }
 
-      // Listen for auth state changes (sign in, sign out, token refresh)
       const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
         if (event === 'SIGNED_IN' && session?.user) {
           const userObj = {
@@ -163,12 +174,11 @@ export default function App() {
     localStorage.setItem('pjok_active_jadwal', JSON.stringify(jadwalItem));
   };
 
-  // 🔒 ROUTE GUARD: Jika tidak ada user/sesi aktif, paksa ke tampilan Login!
   const isDashboardView = ['dashboard', 'absensi_form', 'riwayat', 'kelola', 'laporan'].includes(currentView);
   const activeViewToRender = (!user && isDashboardView) ? 'login' : currentView;
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col font-['Plus_Jakarta_Sans',sans-serif]">
+    <div className={`min-h-screen flex flex-col font-['Plus_Jakarta_Sans',sans-serif] transition-colors duration-300 ${theme === 'light' ? 'bg-slate-50 text-slate-900' : 'bg-[#080911] text-zinc-100'}`}>
       
       {/* Top Navbar */}
       <Navbar
@@ -177,6 +187,8 @@ export default function App() {
         onNavigate={handleNavigate}
         onLogout={handleLogout}
         isOffline={isOffline}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       {/* Main Content Area */}

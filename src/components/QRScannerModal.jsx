@@ -70,7 +70,7 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
     setIsCameraActive(false);
   };
 
-  // Start live camera stream with continuous focus constraints
+  // Start live camera stream
   const startCamera = async (selectedFacingMode = facingMode) => {
     stopCamera();
     setCameraError('');
@@ -121,7 +121,6 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
     if (video && canvas && video.readyState === video.HAVE_ENOUGH_DATA) {
       let detectedCode = null;
 
-      // 1. Try Native BarcodeDetector API if available (Instant hardware GPU decoding!)
       if (barcodeDetectorRef.current) {
         try {
           const codes = await barcodeDetectorRef.current.detect(video);
@@ -131,7 +130,6 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
         } catch (e) {}
       }
 
-      // 2. Optimized jsQR fallback with fixed aspect downscaling (Max 480px width)
       if (!detectedCode) {
         const ctx = canvas.getContext('2d', { willReadFrequently: true });
         const targetWidth = Math.min(video.videoWidth, 480);
@@ -177,7 +175,6 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
     if (!rawText) return '';
     let str = String(rawText).trim();
 
-    // 1. Try parsing JSON format e.g. {"nis": "3163288603"} or {"nisn": "3163288603"}
     if (str.startsWith('{') && str.endsWith('}')) {
       try {
         const parsed = JSON.parse(str);
@@ -188,7 +185,6 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
       } catch (e) {}
     }
 
-    // 2. Try parsing URL query parameters e.g. https://domain.com/absensi?nis=3163288603
     if (str.includes('http://') || str.includes('https://')) {
       try {
         const url = new URL(str);
@@ -197,13 +193,11 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
       } catch (e) {}
     }
 
-    // 3. Try key-value or pattern format e.g. "Scan untuk Absensi: 1001", "NISN: 3163288603", "QR-1001"
     const matchKV = str.match(/(?:scan\s+untuk\s+absensi|absensi|nisn|nis|code|id)[\s:=]+([a-zA-Z0-9-]+)/i);
     if (matchKV && matchKV[1]) {
       return matchKV[1].trim();
     }
 
-    // 4. Extract numeric sequence e.g. "Scan untuk Absensi 1001"
     const digitsMatch = str.match(/\b([0-9]{3,12})\b/);
     if (digitsMatch && digitsMatch[1]) {
       return digitsMatch[1].trim();
@@ -216,12 +210,8 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
     const cleanCode = parseRawQrData(rawNisn);
     if (!cleanCode) return;
 
-    // Play Audio Beep Sound Effect
     playSuccessBeep();
-
     setScanNotif(`🎉 BEEP! Berhasil Scan: ${cleanCode}`);
-
-    // Call success callback
     onScanSuccess(cleanCode);
 
     setTimeout(() => {
@@ -257,45 +247,45 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in">
-      <div className="bg-slate-900 rounded-3xl shadow-2xl border border-slate-800 w-full max-w-md overflow-hidden text-white relative">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#05060b]/85 backdrop-blur-md animate-fade-in">
+      <div className="bg-[#121324] rounded-3xl shadow-2xl border border-[#242747] w-full max-w-md overflow-hidden text-white relative">
         
-        {/* Futuristic Header Gradient */}
-        <div className="bg-gradient-to-r from-slate-900 via-emerald-950 to-slate-900 border-b border-emerald-500/30 p-5 text-center relative">
+        {/* Header Gradient */}
+        <div className="bg-gradient-to-br from-[#181a33] via-[#1a1c3b] to-[#121324] border-b border-[#242747] p-6 text-center relative">
           <button
             onClick={() => { stopCamera(); onClose(); }}
-            className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-xl transition-colors cursor-pointer bg-slate-800/60"
+            className="absolute top-4 right-4 text-zinc-400 hover:text-white p-1.5 rounded-xl transition-colors cursor-pointer bg-[#1d1f3d] border border-[#242747]"
             title="Tutup Modal"
           >
             <X className="w-5 h-5" />
           </button>
 
-          <div className="w-14 h-14 bg-emerald-500/20 text-emerald-400 rounded-2xl flex items-center justify-center mx-auto mb-2 border border-emerald-500/40 shadow-lg shadow-emerald-500/20">
+          <div className="w-14 h-14 bg-[#8b5cf6]/20 text-[#c084fc] rounded-2xl flex items-center justify-center mx-auto mb-3 border border-[#8b5cf6]/40 shadow-lg shadow-[#8b5cf6]/20">
             <QrCode className="w-7 h-7" />
           </div>
           <h2 className="font-black text-xl tracking-tight text-white flex items-center justify-center gap-2">
             <span>Ultra-Fast QR Scanner</span>
-            <span className="text-[10px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30 flex items-center gap-1 font-bold">
+            <span className="text-[10px] bg-[#8b5cf6]/20 text-[#c084fc] px-2.5 py-0.5 rounded-full border border-[#8b5cf6]/30 flex items-center gap-1 font-black">
               <Zap className="w-3 h-3 text-amber-400 fill-amber-400 animate-bounce" /> Fast Scan & Beep
             </span>
           </h2>
-          <p className="text-xs text-slate-300 font-medium opacity-90 mt-1">
+          <p className="text-xs text-zinc-400 font-medium opacity-90 mt-1">
             Arahkan kamera ke QR Code Kartu Siswa atau input NIS / NISN manual
           </p>
         </div>
 
         {/* Body Content */}
-        <div className="p-5 space-y-4">
+        <div className="p-6 space-y-4">
           
           {/* Notification Alert Banner */}
           {scanNotif && (
-            <div className="rounded-2xl p-3.5 text-xs font-black text-center bg-gradient-to-r from-emerald-600 to-teal-600 text-white border border-emerald-400 shadow-xl shadow-emerald-600/30 animate-bounce">
+            <div className="rounded-2xl p-4 text-xs font-black text-center bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] text-white border border-[#8b5cf6] shadow-xl shadow-[#8b5cf6]/35 animate-bounce">
               {scanNotif}
             </div>
           )}
 
           {cameraError && (
-            <div className="rounded-2xl p-3 text-xs font-semibold text-center bg-rose-500/10 text-rose-300 border border-rose-500/30 flex items-center justify-center space-x-2">
+            <div className="rounded-2xl p-3.5 text-xs font-semibold text-center bg-rose-500/10 text-rose-300 border border-rose-500/30 flex items-center justify-center space-x-2">
               <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400" />
               <span>{cameraError}</span>
             </div>
@@ -304,7 +294,7 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
           {/* Camera View Area */}
           {isCameraActive ? (
             <div className="space-y-3">
-              <div className="relative bg-black rounded-3xl overflow-hidden aspect-square border-2 border-emerald-500/80 shadow-2xl shadow-emerald-500/20 flex items-center justify-center">
+              <div className="relative bg-black rounded-3xl overflow-hidden aspect-square border-2 border-[#8b5cf6]/80 shadow-2xl shadow-[#8b5cf6]/20 flex items-center justify-center">
                 <video
                   ref={videoRef}
                   autoPlay
@@ -314,35 +304,38 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
                 ></video>
                 <canvas ref={canvasRef} className="hidden" />
 
-                {/* Target overlay reticle box */}
-                <div className="absolute inset-8 border-2 border-dashed border-emerald-400/80 rounded-2xl pointer-events-none flex flex-col justify-between p-2">
+                {/* Target overlay reticle box with glowing laser animation */}
+                <div className="absolute inset-8 border-2 border-dashed border-[#a855f7]/80 rounded-2xl pointer-events-none flex flex-col justify-between p-3 relative overflow-hidden">
                   <div className="flex justify-between">
-                    <span className="w-4 h-4 border-t-2 border-l-2 border-emerald-400"></span>
-                    <span className="w-4 h-4 border-t-2 border-r-2 border-emerald-400"></span>
+                    <span className="w-4 h-4 border-t-2 border-l-2 border-[#a855f7]"></span>
+                    <span className="w-4 h-4 border-t-2 border-r-2 border-[#a855f7]"></span>
                   </div>
-                  <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-emerald-400 to-transparent animate-pulse shadow-lg shadow-emerald-400/50"></div>
+                  
+                  {/* Laser Scan Line */}
+                  <div className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#f43f5e] to-transparent shadow-lg shadow-[#f43f5e] animate-laser"></div>
+
                   <div className="flex justify-between">
-                    <span className="w-4 h-4 border-b-2 border-l-2 border-emerald-400"></span>
-                    <span className="w-4 h-4 border-b-2 border-r-2 border-emerald-400"></span>
+                    <span className="w-4 h-4 border-b-2 border-l-2 border-[#a855f7]"></span>
+                    <span className="w-4 h-4 border-b-2 border-r-2 border-[#a855f7]"></span>
                   </div>
                 </div>
               </div>
 
               {/* Camera Active Indicator & Controls */}
-              <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-3 flex items-center justify-between">
+              <div className="bg-[#181a33] border border-[#242747] rounded-2xl p-3.5 flex items-center justify-between">
                 <div className="flex items-center space-x-2.5">
-                  <div className="w-3 h-3 rounded-full bg-emerald-400 animate-ping"></div>
+                  <div className="w-3 h-3 rounded-full bg-[#a855f7] animate-ping"></div>
                   <div>
-                    <p className="text-xs font-extrabold text-emerald-300">Kamera Live Ultra-Fast ({facingMode === 'environment' ? 'Belakang' : 'Depan'})</p>
-                    <p className="text-[10px] text-slate-400 font-medium">Auto-scan responsif & langsung simpan...</p>
+                    <p className="text-xs font-black text-[#c084fc]">Kamera Live ({facingMode === 'environment' ? 'Belakang' : 'Depan'})</p>
+                    <p className="text-[10px] text-zinc-400 font-medium">Auto-scan responsif & langsung simpan...</p>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-1.5">
+                <div className="flex items-center space-x-2">
                   <button
                     type="button"
                     onClick={toggleCameraFacing}
-                    className="p-2.5 bg-slate-700 hover:bg-slate-600 text-emerald-400 rounded-xl text-xs font-extrabold transition-all border border-slate-600"
+                    className="p-2.5 bg-[#1d1f3d] hover:bg-[#25284d] text-[#c084fc] rounded-xl text-xs font-black transition-all border border-[#242747]"
                     title="Ganti Kamera Depan/Belakang"
                   >
                     <RefreshCw className="w-4 h-4" />
@@ -351,7 +344,7 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
                   <button
                     type="button"
                     onClick={stopCamera}
-                    className="px-3 py-2 bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 rounded-xl text-xs font-extrabold border border-rose-500/30 transition-all"
+                    className="px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 rounded-xl text-xs font-black border border-rose-500/30 transition-all cursor-pointer"
                   >
                     Matikan
                   </button>
@@ -362,7 +355,7 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
             <button
               type="button"
               onClick={() => startCamera()}
-              className="w-full bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 active:scale-95 text-white py-4 px-4 rounded-2xl font-black text-sm flex items-center justify-center space-x-2 shadow-xl shadow-emerald-600/30 transition-all cursor-pointer"
+              className="w-full bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] hover:from-[#9333ea] hover:to-[#581c87] active:scale-95 text-white py-4 px-4 rounded-2xl font-black text-sm flex items-center justify-center space-x-2 shadow-xl shadow-[#8b5cf6]/35 transition-all cursor-pointer"
             >
               <Camera className="w-5 h-5" />
               <span>Buka Kamera Live Scanner</span>
@@ -371,14 +364,14 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
 
           {/* Separator */}
           <div className="flex items-center gap-2 py-1">
-            <div className="flex-1 h-px bg-slate-800"></div>
-            <span className="text-[10px] text-slate-500 font-black tracking-widest uppercase">Atau Input Manual</span>
-            <div className="flex-1 h-px bg-slate-800"></div>
+            <div className="flex-1 h-px bg-[#242747]"></div>
+            <span className="text-[10px] text-zinc-500 font-black tracking-widest uppercase">Atau Input Manual</span>
+            <div className="flex-1 h-px bg-[#242747]"></div>
           </div>
 
           {/* Manual Input NIS / NISN */}
           <div>
-            <label className="block text-[10px] font-extrabold text-slate-400 uppercase tracking-wider mb-1.5">
+            <label className="block text-[10px] font-black text-zinc-400 uppercase tracking-wider mb-1.5">
               INPUT NIS / NISN SISWA MANUAL
             </label>
 
@@ -388,15 +381,15 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
                 value={manualNisn}
                 onChange={(e) => setManualNisn(e.target.value)}
                 placeholder="Masukkan NIS / NISN siswa..."
-                className="flex-1 border border-slate-700 bg-slate-800 rounded-2xl px-4 py-3 text-xs font-bold text-white placeholder-slate-500 outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
+                className="flex-1 border border-[#242747] bg-[#181a33] rounded-2xl px-4 py-3 text-xs font-bold text-white placeholder-zinc-500 outline-none focus:ring-2 focus:ring-[#8b5cf6] transition-all"
               />
 
               <button
                 type="submit"
-                className="bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white px-5 rounded-2xl font-black flex items-center justify-center transition-all shadow-lg shadow-emerald-600/30 cursor-pointer"
+                className="bg-gradient-to-r from-[#8b5cf6] to-[#6d28d9] hover:scale-105 active:scale-95 text-white px-5 rounded-2xl font-black flex items-center justify-center transition-all shadow-lg shadow-[#8b5cf6]/35 cursor-pointer"
                 title="Submit Manual"
               >
-                <Check className="w-5 h-5" />
+                <Check className="w-5 h-5 stroke-[3]" />
               </button>
             </form>
           </div>
@@ -406,7 +399,7 @@ export default function QRScannerModal({ isOpen, onClose, onScanSuccess }) {
             <button
               type="button"
               onClick={() => { stopCamera(); onClose(); }}
-              className="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-3 rounded-2xl border border-slate-700 transition-all cursor-pointer"
+              className="w-full bg-[#181a33] hover:bg-[#25284d] text-zinc-300 font-bold text-xs py-3 rounded-2xl border border-[#242747] transition-all cursor-pointer"
             >
               SELESAI SCAN (TUTUP KAMERA)
             </button>
