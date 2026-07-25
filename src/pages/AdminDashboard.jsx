@@ -70,6 +70,7 @@ export default function AdminDashboard({ user }) {
     try {
       await addOrUpdateJadwal(jadwalForm);
       setShowJadwalModal(false);
+      setJadwalForm({ id: '', guru_id: '', kelas_id: '', hari: 'Senin', jam_mulai: '07:00', jam_selesai: '08:30', mata_pelajaran: 'PJOK', lokasi: 'Lapangan Utama' });
       await loadAllAdminData();
     } catch (err) {
       alert('Gagal menyimpan jadwal: ' + err.message);
@@ -734,7 +735,7 @@ export default function AdminDashboard({ user }) {
                   onChange={(e) => setJadwalForm({ ...jadwalForm, hari: e.target.value })}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl p-2.5 text-white font-medium"
                 >
-                  {['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'].map(h => (
+                  {['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'].map(h => (
                     <option key={h} value={h}>{h}</option>
                   ))}
                 </select>

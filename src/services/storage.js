@@ -234,9 +234,11 @@ export async function loginWithGoogle() {
 }
 
 // DATA READ QUERIES (SUPABASE DIRECT)
-export async function getGuruByUserId(userId) {
+export async function getGuruByUserId(userId, userObj = null) {
   if (isSupabaseConfigured && navigator.onLine) {
     try {
+      if (!userId) return null;
+
       // 1. Cari berdasarkan user_id
       const { data } = await supabase
         .from('guru')
@@ -255,19 +257,32 @@ export async function getGuruByUserId(userId) {
 
       if (guruById) return guruById;
 
-      // 3. Cari guru pertama yang ada di database
-      const { data: firstGuru } = await supabase
-        .from('guru')
-        .select('*')
-        .limit(1)
-        .maybeSingle();
+      // 3. Buat/Daftarkan profil guru baru khusus untuk user ini jika belum ada (Bukan fallback ke guru lain!)
+      const newGuru = {
+        id: `guru_${String(userId).replace(/[^a-zA-Z0-9_]/g, '_')}`,
+        user_id: userId,
+        nama_guru: userObj?.nama || userObj?.username || 'Guru PJOK',
+        nip: userObj?.nip || `NIP-${Date.now()}`,
+        mata_pelajaran: 'PJOK'
+      };
 
-      if (firstGuru) return firstGuru;
+      try {
+        const { data: createdGuru } = await supabase
+          .from('guru')
+          .upsert([newGuru])
+          .select('*')
+          .maybeSingle();
+
+        if (createdGuru) return createdGuru;
+      } catch (errUpsert) {
+        console.warn('Guru auto upsert note:', errUpsert);
+      }
+      return newGuru;
     } catch (e) {
       console.warn('getGuruByUserId query note:', e);
     }
   }
-  return { id: 'g_default', user_id: userId, nama_guru: 'Guru PJOK', nip: '-', mata_pelajaran: 'PJOK' };
+  return { id: `guru_${userId}`, user_id: userId, nama_guru: userObj?.nama || 'Guru PJOK', nip: '-', mata_pelajaran: 'PJOK' };
 }
 
 export function checkScheduleStatus(jamMulaiStr, jamSelesaiStr, hariJadwal, currentDayStr, currentTimeStr) {
@@ -293,16 +308,24 @@ export function checkScheduleStatus(jamMulaiStr, jamSelesaiStr, hariJadwal, curr
   }
 }
 
-export async function getJadwalGuru(guruId) {
+export async function getJadwalGuru(guruId, userId) {
   if (isSupabaseConfigured && navigator.onLine) {
     try {
-      const { data, error } = await supabase
+      const matchIds = [guruId, userId].filter(Boolean).map(x => String(x).trim());
+
+      let query = supabase
         .from('jadwal_pelajaran')
         .select(`
           *,
           kelas:kelas_id(nama_kelas, tingkat),
           guru:guru_id(nama_guru)
         `);
+
+      if (matchIds.length > 0) {
+        query = query.in('guru_id', matchIds);
+      }
+
+      const { data, error } = await query;
       
       if (data && !error) {
         return data.map(j => ({
@@ -322,12 +345,19 @@ export async function getJadwalGuru(guruId) {
 export async function getSiswaByKelas(kelasId, namaKelas) {
   if (isSupabaseConfigured && navigator.onLine) {
     try {
+      let matchedByKelasId = [];
       if (kelasId) {
         const { data, error } = await supabase
           .from('siswa')
           .select('*')
           .eq('kelas_id', String(kelasId).trim());
-        if (data && !error && data.length > 0) return data;
+        if (data && !error && data.length > 0) {
+          matchedByKelasId = data;
+        }
+      }
+
+      if (matchedByKelasId.length > 0) {
+        return matchedByKelasId;
       }
 
       if (namaKelas) {
@@ -346,17 +376,29 @@ export async function getSiswaByKelas(kelasId, namaKelas) {
           if (siswaData && siswaData.length > 0) return siswaData;
         }
       }
-
-      // Fallback: Ambil seluruh data siswa agar scanner tidak pernah terblokir
-      const { data: allData, error: allErr } = await supabase
-        .from('siswa')
-        .select('*');
-      if (allData && !allErr && allData.length > 0) return allData;
     } catch (e) {
       console.warn('getSiswaByKelas note:', e);
     }
   }
   return [];
+}
+
+export async function getScheduleStudentStats(jadwalId, kelasId, namaKelas, tanggalStr) {
+  try {
+    const students = await getSiswaByKelas(kelasId, namaKelas);
+    const totalSiswa = students.length;
+    const records = await getAbsensiRecord(jadwalId, tanggalStr);
+    const scannedCount = records ? records.length : 0;
+    const unscannedCount = Math.max(0, totalSiswa - scannedCount);
+    return {
+      totalSiswa,
+      scannedCount,
+      unscannedCount,
+      students
+    };
+  } catch (e) {
+    return { totalSiswa: 0, scannedCount: 0, unscannedCount: 0, students: [] };
+  }
 }
 
 export async function getAbsensiRecord(jadwalId, tanggalStr) {
@@ -649,9 +691,19 @@ export async function addOrUpdateSiswaBatch(siswaArray) {
 
 export async function addOrUpdateJadwal(jadwalData) {
   if (isSupabaseConfigured && navigator.onLine) {
+    const cleanId = (jadwalData.id && String(jadwalData.id).trim().length > 0)
+      ? String(jadwalData.id).trim()
+      : `jadwal_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
     const payload = {
-      id: jadwalData.id || `jadwal_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-      ...jadwalData
+      guru_id: jadwalData.guru_id || null,
+      kelas_id: jadwalData.kelas_id || null,
+      hari: jadwalData.hari || 'Senin',
+      jam_mulai: jadwalData.jam_mulai || '07:00:00',
+      jam_selesai: jadwalData.jam_selesai || '08:30:00',
+      mata_pelajaran: jadwalData.mata_pelajaran || 'PJOK',
+      lokasi: jadwalData.lokasi || 'Lapangan Utama',
+      id: cleanId
     };
 
     const { data, error } = await supabase.from('jadwal_pelajaran').upsert([payload]).select('*');

@@ -12,7 +12,14 @@ import { supabase, isSupabaseConfigured } from './lib/supabase';
 export default function App() {
   const [user, setUser] = useState(null);
   const [currentView, setCurrentView] = useState('login'); // Protected routes: 'dashboard', 'absensi_form', 'riwayat', 'kelola', 'laporan'
-  const [selectedJadwal, setSelectedJadwal] = useState(null);
+  const [selectedJadwal, setSelectedJadwal] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pjok_active_jadwal');
+      return saved ? JSON.parse(saved) : null;
+    } catch (e) {
+      return null;
+    }
+  });
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [realtimeClock, setRealtimeClock] = useState(new Date());
 
