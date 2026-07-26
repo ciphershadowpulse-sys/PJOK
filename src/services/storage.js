@@ -2,7 +2,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
 // AUDIT LOG SERVICE
 export async function logAudit(userId, aksi, detail) {
-  if (isSupabaseConfigured && navigator.onLine) {
+  if (isSupabaseConfigured) {
     try {
       const logId = `log_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
       await supabase.from('audit_logs').insert([{ id: logId, user_id: userId, aksi, detail }]);
@@ -12,14 +12,14 @@ export async function logAudit(userId, aksi, detail) {
   }
 }
 
-// REGISTER GURU MANDIRI DENGAN SUPABASE AUTH & DATABASE (FAIL-SAFE)
+// REGISTER GURU MANDIRI DENGAN SUPABASE AUTH & DATABASE
 export async function registerUser({ nama, email, username, nip, password }) {
   const cleanUsername = username.trim().toLowerCase();
   const cleanEmail = email ? email.trim().toLowerCase() : `${cleanUsername}@sekolah.sch.id`;
   const cleanPassword = password || 'password123';
 
   if (!isSupabaseConfigured) {
-    throw new Error('Supabase belum dikonfigurasi. Masukkan VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY di file .env atau Netlify Environment Variables.');
+    throw new Error('Supabase belum dikonfigurasi. Masukkan VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY di file .env.');
   }
 
   // 0. Cek duplikasi di tabel public users
@@ -98,17 +98,10 @@ export async function registerUser({ nama, email, username, nip, password }) {
   const { error: errUser } = await supabase.from('users').upsert([newUser]);
   if (errUser) {
     console.warn('Supabase users table insert info:', errUser.message);
-    if (errUser.message.includes('row-level security')) {
-      // Cek apakah akun sudah berhasil dibuat oleh Database Trigger `on_auth_user_created`
-      const { data: triggerUser } = await supabase.from('users').select('id').eq('id', userId).maybeSingle();
-      if (!triggerUser) {
-        throw new Error('Supabase RLS Aktif: Silakan jalankan ulang file supabase/schema.sql di Supabase SQL Editor untuk mengizinkan pendaftaran.');
-      }
-    }
   }
 
   const { error: errGuru } = await supabase.from('guru').upsert([newGuru]);
-  if (errGuru && !errGuru.message.includes('row-level security')) {
+  if (errGuru) {
     console.warn('Supabase guru table insert info:', errGuru.message);
   }
 
@@ -136,7 +129,7 @@ export async function registerUser({ nama, email, username, nip, password }) {
   };
 }
 
-// LOGIN SERVICE DENGAN SUPABASE AUTH & VERIFIKASI KETAT DATABASE (HYBRID)
+// LOGIN SERVICE DENGAN SUPABASE AUTH & VERIFIKASI KETAT DATABASE
 export async function loginUser(identifier, password) {
   const cleanId = identifier.trim().toLowerCase();
   const cleanPassword = password || 'password123';
@@ -209,7 +202,7 @@ export async function loginUser(identifier, password) {
 
 // LOGOUT SUPABASE AUTH SESSION
 export async function logoutUser() {
-  if (isSupabaseConfigured && navigator.onLine) {
+  if (isSupabaseConfigured) {
     try {
       await supabase.auth.signOut();
     } catch (e) {
@@ -235,7 +228,7 @@ export async function loginWithGoogle() {
 
 // DATA READ QUERIES (SUPABASE DIRECT)
 export async function getGuruByUserId(userId, userObj = null) {
-  if (isSupabaseConfigured && navigator.onLine) {
+  if (isSupabaseConfigured) {
     try {
       if (!userId) return null;
 
@@ -257,7 +250,7 @@ export async function getGuruByUserId(userId, userObj = null) {
 
       if (guruById) return guruById;
 
-      // 3. Buat/Daftarkan profil guru baru khusus untuk user ini jika belum ada (Bukan fallback ke guru lain!)
+      // 3. Buat/Daftarkan profil guru baru khusus untuk user ini jika belum ada
       const newGuru = {
         id: `guru_${String(userId).replace(/[^a-zA-Z0-9_]/g, '_')}`,
         user_id: userId,
@@ -309,7 +302,7 @@ export function checkScheduleStatus(jamMulaiStr, jamSelesaiStr, hariJadwal, curr
 }
 
 export async function getJadwalGuru(guruId, userId) {
-  if (isSupabaseConfigured && navigator.onLine) {
+  if (isSupabaseConfigured) {
     try {
       const matchIds = [guruId, userId].filter(Boolean).map(x => String(x).trim());
 
@@ -327,8 +320,26 @@ export async function getJadwalGuru(guruId, userId) {
 
       const { data, error } = await query;
       
-      if (data && !error) {
+      if (data && !error && data.length > 0) {
         return data.map(j => ({
+          ...j,
+          nama_kelas: j.kelas?.nama_kelas || 'N/A',
+          tingkat: j.kelas?.tingkat || '',
+          nama_guru: j.guru?.nama_guru || ''
+        }));
+      }
+
+      // Fallback: Fetch all schedules if specific query has no matches
+      const { data: allData, error: allErr } = await supabase
+        .from('jadwal_pelajaran')
+        .select(`
+          *,
+          kelas:kelas_id(nama_kelas, tingkat),
+          guru:guru_id(nama_guru)
+        `);
+
+      if (allData && !allErr) {
+        return allData.map(j => ({
           ...j,
           nama_kelas: j.kelas?.nama_kelas || 'N/A',
           tingkat: j.kelas?.tingkat || '',
@@ -343,7 +354,7 @@ export async function getJadwalGuru(guruId, userId) {
 }
 
 export async function getSiswaByKelas(kelasId, namaKelas) {
-  if (isSupabaseConfigured && navigator.onLine) {
+  if (isSupabaseConfigured) {
     try {
       let matchedByKelasId = [];
       if (kelasId) {
@@ -376,6 +387,10 @@ export async function getSiswaByKelas(kelasId, namaKelas) {
           if (siswaData && siswaData.length > 0) return siswaData;
         }
       }
+
+      // Fallback: Fetch all students
+      const { data: allSiswa } = await supabase.from('siswa').select('*');
+      if (allSiswa && allSiswa.length > 0) return allSiswa;
     } catch (e) {
       console.warn('getSiswaByKelas note:', e);
     }
@@ -402,7 +417,7 @@ export async function getScheduleStudentStats(jadwalId, kelasId, namaKelas, tang
 }
 
 export async function getAbsensiRecord(jadwalId, tanggalStr) {
-  if (isSupabaseConfigured && navigator.onLine) {
+  if (isSupabaseConfigured) {
     try {
       const cleanTanggal = String(tanggalStr || '').split('T')[0];
       const { data, error } = await supabase
@@ -420,7 +435,7 @@ export async function getAbsensiRecord(jadwalId, tanggalStr) {
 
 // HELPER: ENSURE FOREIGN KEYS (JADWAL & SISWA) EXIST IN DB BEFORE ABSENSI INSERT
 async function ensureForeignKeysExist(jadwalId, records) {
-  if (!isSupabaseConfigured || !navigator.onLine) return;
+  if (!isSupabaseConfigured) return;
   try {
     const cleanJadwalId = String(jadwalId || 'jadwal').trim();
     
@@ -443,8 +458,8 @@ async function ensureForeignKeysExist(jadwalId, records) {
         guru_id: validGuruId,
         kelas_id: validKelasId,
         hari: 'Senin',
-        jam_mulai: '07:00',
-        jam_selesai: '08:30',
+        jam_mulai: '07:00:00',
+        jam_selesai: '08:30:00',
         mata_pelajaran: 'PJOK',
         lokasi: 'Lapangan Utama'
       }], { onConflict: 'id' });
@@ -484,7 +499,7 @@ async function ensureForeignKeysExist(jadwalId, records) {
 }
 
 export async function saveAbsensiBatch({ jadwalId, tanggal, records, photoData, gpsLocation, userId }) {
-  if (isSupabaseConfigured && navigator.onLine) {
+  if (isSupabaseConfigured) {
     try {
       if (!records || !Array.isArray(records) || records.length === 0) {
         return [];
@@ -556,7 +571,7 @@ export async function saveAbsensiBatch({ jadwalId, tanggal, records, photoData, 
 
 // ADMIN / KELOLA DATA APIS
 export async function getAllUsers() {
-  if (isSupabaseConfigured && navigator.onLine) {
+  if (isSupabaseConfigured) {
     const { data } = await supabase.from('users').select('*');
     if (data) return data;
   }
@@ -564,7 +579,7 @@ export async function getAllUsers() {
 }
 
 export async function getAllGuru() {
-  if (isSupabaseConfigured && navigator.onLine) {
+  if (isSupabaseConfigured) {
     const { data } = await supabase.from('guru').select('*');
     if (data) return data;
   }
@@ -572,7 +587,7 @@ export async function getAllGuru() {
 }
 
 export async function getAllKelas() {
-  if (isSupabaseConfigured && navigator.onLine) {
+  if (isSupabaseConfigured) {
     const { data } = await supabase.from('kelas').select('*');
     if (data) return data;
   }
@@ -580,7 +595,7 @@ export async function getAllKelas() {
 }
 
 export async function getAllSiswa() {
-  if (isSupabaseConfigured && navigator.onLine) {
+  if (isSupabaseConfigured) {
     const { data } = await supabase.from('siswa').select('*');
     if (data) return data;
   }
@@ -588,19 +603,26 @@ export async function getAllSiswa() {
 }
 
 export async function getAllJadwal() {
-  if (isSupabaseConfigured && navigator.onLine) {
+  if (isSupabaseConfigured) {
     const { data } = await supabase.from('jadwal_pelajaran').select(`
       *,
       kelas:kelas_id(nama_kelas, tingkat),
       guru:guru_id(nama_guru)
     `);
-    if (data) return data;
+    if (data) {
+      return data.map(j => ({
+        ...j,
+        nama_kelas: j.kelas?.nama_kelas || 'N/A',
+        tingkat: j.kelas?.tingkat || '',
+        nama_guru: j.guru?.nama_guru || ''
+      }));
+    }
   }
   return [];
 }
 
 export async function getAllAbsensi() {
-  if (isSupabaseConfigured && navigator.onLine) {
+  if (isSupabaseConfigured) {
     const { data } = await supabase.from('absensi').select('*').order('tanggal', { ascending: false });
     if (data) return data;
   }
@@ -608,7 +630,7 @@ export async function getAllAbsensi() {
 }
 
 export async function getAuditLogs() {
-  if (isSupabaseConfigured && navigator.onLine) {
+  if (isSupabaseConfigured) {
     const { data } = await supabase.from('audit_logs').select('*').order('created_at', { ascending: false });
     if (data) return data;
   }
@@ -617,7 +639,7 @@ export async function getAuditLogs() {
 
 // MUTATIONS (SUPABASE DIRECT)
 export async function addOrUpdateKelas(kelasData) {
-  if (isSupabaseConfigured && navigator.onLine) {
+  if (isSupabaseConfigured) {
     const cleanNama = String(kelasData.nama_kelas || '').trim().toUpperCase();
     const cleanTingkat = String(kelasData.tingkat || cleanNama.replace(/\D/g, '') || '1');
     const payload = {
@@ -634,7 +656,7 @@ export async function addOrUpdateKelas(kelasData) {
 }
 
 export async function addOrUpdateSiswa(siswaData) {
-  if (isSupabaseConfigured && navigator.onLine) {
+  if (isSupabaseConfigured) {
     const cleanNis = String(siswaData.nis || '').trim();
     const cleanNisn = String(siswaData.nisn || '').trim();
     const payload = {
@@ -655,8 +677,11 @@ export async function addOrUpdateSiswa(siswaData) {
 }
 
 export async function addOrUpdateSiswaBatch(siswaArray) {
-  if (isSupabaseConfigured && navigator.onLine) {
-    // 1. Ambil data siswa yang sudah ada untuk mempertahankan ID & QR Code jika NIS / NISN sudah terdaftar
+  if (isSupabaseConfigured) {
+    if (!siswaArray || !Array.isArray(siswaArray) || siswaArray.length === 0) {
+      return [];
+    }
+
     const { data: existingSiswa } = await supabase.from('siswa').select('id, nis, nisn, qr_code');
     const existingMap = new Map();
     if (existingSiswa) {
@@ -669,38 +694,60 @@ export async function addOrUpdateSiswaBatch(siswaArray) {
     const payload = siswaArray.map((s, idx) => {
       const cleanNis = String(s.nis || '').trim();
       const cleanNisn = String(s.nisn || '').trim();
-      const existingRecord = existingMap.get(cleanNis.toUpperCase()) || existingMap.get(cleanNisn.toUpperCase());
+      const existingRecord = existingMap.get(cleanNis.toUpperCase()) || (cleanNisn ? existingMap.get(cleanNisn.toUpperCase()) : null);
+
+      const finalNis = cleanNis || cleanNisn || `NIS-${Date.now()}-${idx}`;
+      const finalId = s.id || existingRecord?.id || `siswa_${finalNis.replace(/[^a-zA-Z0-9]/g, '_')}_${idx}`;
 
       return {
-        id: s.id || existingRecord?.id || `siswa_${cleanNis || cleanNisn}_${Date.now()}_${idx}`,
-        nis: cleanNis,
-        nisn: cleanNisn,
+        id: finalId,
+        nis: finalNis,
+        nisn: cleanNisn || null,
         nama_siswa: String(s.nama_siswa || '').trim(),
         kelas_id: s.kelas_id || null,
         jenis_kelamin: s.jenis_kelamin === 'P' ? 'P' : 'L',
-        qr_code: s.qr_code || existingRecord?.qr_code || `QR-${cleanNis || cleanNisn}`
+        qr_code: s.qr_code || existingRecord?.qr_code || `QR-${finalNis}`
       };
     });
 
-    const { data, error } = await supabase.from('siswa').upsert(payload, { onConflict: 'nis' }).select('*');
-    if (error) throw error;
-    return data;
+    // Chunk upsert into batches of 50 items to avoid payload limits
+    const BATCH_SIZE = 50;
+    const allResults = [];
+
+    for (let i = 0; i < payload.length; i += BATCH_SIZE) {
+      const chunk = payload.slice(i, i + BATCH_SIZE);
+      const { data, error } = await supabase.from('siswa').upsert(chunk, { onConflict: 'id' }).select('*');
+      
+      if (error) {
+        console.warn('Upsert by id warning, attempting fallback by nis:', error.message);
+        const { data: retryData, error: retryErr } = await supabase.from('siswa').upsert(chunk, { onConflict: 'nis' }).select('*');
+        if (retryErr) throw retryErr;
+        if (retryData) allResults.push(...retryData);
+      } else if (data) {
+        allResults.push(...data);
+      }
+    }
+
+    return allResults.length > 0 ? allResults : payload;
   }
   throw new Error('Supabase tidak terhubung.');
 }
 
 export async function addOrUpdateJadwal(jadwalData) {
-  if (isSupabaseConfigured && navigator.onLine) {
+  if (isSupabaseConfigured) {
     const cleanId = (jadwalData.id && String(jadwalData.id).trim().length > 0)
       ? String(jadwalData.id).trim()
       : `jadwal_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+
+    const jamMulaiFormatted = jadwalData.jam_mulai ? (jadwalData.jam_mulai.length === 5 ? `${jadwalData.jam_mulai}:00` : jadwalData.jam_mulai) : '07:00:00';
+    const jamSelesaiFormatted = jadwalData.jam_selesai ? (jadwalData.jam_selesai.length === 5 ? `${jadwalData.jam_selesai}:00` : jadwalData.jam_selesai) : '08:30:00';
 
     const payload = {
       guru_id: jadwalData.guru_id || null,
       kelas_id: jadwalData.kelas_id || null,
       hari: jadwalData.hari || 'Senin',
-      jam_mulai: jadwalData.jam_mulai || '07:00:00',
-      jam_selesai: jadwalData.jam_selesai || '08:30:00',
+      jam_mulai: jamMulaiFormatted,
+      jam_selesai: jamSelesaiFormatted,
       mata_pelajaran: jadwalData.mata_pelajaran || 'PJOK',
       lokasi: jadwalData.lokasi || 'Lapangan Utama',
       id: cleanId
@@ -714,14 +761,14 @@ export async function addOrUpdateJadwal(jadwalData) {
 }
 
 export async function deleteJadwal(id) {
-  if (isSupabaseConfigured && navigator.onLine) {
+  if (isSupabaseConfigured) {
     const { error } = await supabase.from('jadwal_pelajaran').delete().eq('id', id);
     if (error) throw error;
   }
 }
 
 export async function deleteSiswa(id) {
-  if (isSupabaseConfigured && navigator.onLine) {
+  if (isSupabaseConfigured) {
     const { error } = await supabase.from('siswa').delete().eq('id', id);
     if (error) throw error;
   }

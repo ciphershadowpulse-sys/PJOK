@@ -202,12 +202,16 @@ export default function AdminDashboard({ user }) {
           throw new Error('File Excel kosong atau tidak terbaca.');
         }
 
-        let currentKelasList = [...kelas];
+        let currentKelasList = await getAllKelas();
+        if (!currentKelasList || currentKelasList.length === 0) {
+          currentKelasList = [...kelas];
+        }
+
         const toImport = [];
         let newClassesCount = 0;
 
         for (const row of rawData) {
-          let rawNis = row['NIS'] ?? row['nis'] ?? row['Nis'] ?? row['No Induk'] ?? row['NO INDUK'];
+          let rawNis = row['NIS'] ?? row['nis'] ?? row['Nis'] ?? row['No Induk'] ?? row['NO INDUK'] ?? row['No. Induk'] ?? row['NO. INDUK'];
           if (!rawNis) {
             for (const k of Object.keys(row)) {
               if (/nis\b|induk/i.test(k)) {
@@ -216,9 +220,22 @@ export default function AdminDashboard({ user }) {
               }
             }
           }
-          const nis = String(rawNis ?? '').trim();
+          let nis = String(rawNis ?? '').trim();
 
-          let rawNama = row['Nama Siswa'] ?? row['nama_siswa'] ?? row['NAMA SISWA'] ?? row['Nama'] ?? row['NAMA'];
+          let rawNisn = row['NISN'] ?? row['nisn'] ?? row['Nisn'] ?? row['No NISN'] ?? row['NO NISN'];
+          if (!rawNisn) {
+            for (const k of Object.keys(row)) {
+              if (/nisn/i.test(k)) {
+                rawNisn = row[k];
+                break;
+              }
+            }
+          }
+          let nisn = String(rawNisn ?? '').trim();
+
+          if (!nis && nisn) nis = nisn;
+
+          let rawNama = row['Nama Siswa'] ?? row['nama_siswa'] ?? row['NAMA SISWA'] ?? row['Nama'] ?? row['NAMA'] ?? row['Nama Lengkap'];
           if (!rawNama) {
             for (const k of Object.keys(row)) {
               if (/nama/i.test(k)) {
@@ -255,7 +272,8 @@ export default function AdminDashboard({ user }) {
           let rawQr = row['QR Code'] ?? row['qr_code'] ?? row['QR'] ?? row['Qr Code'];
           const customQr = String(rawQr ?? '').trim();
 
-          if (!nis || !namaSiswa) continue;
+          if (!nis && !namaSiswa) continue;
+          if (!namaSiswa) continue;
 
           let matchedKelas = null;
           const cleanTargetKelas = normalizeClassName(namaKelas);
@@ -288,29 +306,31 @@ export default function AdminDashboard({ user }) {
 
           toImport.push({
             nis,
+            nisn,
             nama_siswa: namaSiswa,
             kelas_id: matchedKelas?.id || null,
             jenis_kelamin: gender,
-            qr_code: customQr || `QR-${nis}`
+            qr_code: customQr || `QR-${nis || nisn}`
           });
         }
 
         if (toImport.length === 0) {
-          throw new Error('Tidak ada data siswa valid. Pastikan kolom NIS dan Nama Siswa terisi dengan benar.');
+          throw new Error('Tidak ada data siswa valid. Pastikan kolom NIS/NISN dan Nama Siswa terisi dengan benar.');
         }
 
         await addOrUpdateSiswaBatch(toImport);
+        await logAudit(user?.id || 'admin', 'IMPORT_SISWA_EXCEL', `Mengimpor ${toImport.length} siswa dari file Excel: ${file.name}`);
         await loadAllAdminData();
         
-        let msg = `🎉 Berhasil mengimpor ${toImport.length} data siswa ke database!`;
+        let msg = `🎉 Berhasil mengimpor ${toImport.length} data siswa langsung ke Supabase!`;
         if (newClassesCount > 0) {
-          msg += ` (${newClassesCount} kelas baru otomatis ditambahkan)`;
+          msg += ` (${newClassesCount} kelas baru otomatis didaftarkan di Supabase)`;
         }
         setImportStatusType('success');
         setImportStatusMsg(msg);
       } catch (err) {
         setImportStatusType('error');
-        setImportStatusMsg('❌ Gagal mengimpor Excel: ' + err.message);
+        setImportStatusMsg('❌ Gagal mengimpor Excel ke Supabase: ' + err.message);
       } finally {
         setLoading(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
