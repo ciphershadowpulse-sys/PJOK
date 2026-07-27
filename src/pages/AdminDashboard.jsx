@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, GraduationCap, Calendar, Clock, ShieldCheck, Plus, Trash2, Edit, Save, X, Search, RefreshCw, Download, FileSpreadsheet, Upload, CheckCircle2, AlertCircle, Filter, Sparkles } from 'lucide-react';
 import * as XLSX from 'xlsx';
-import { getAllUsers, getAllGuru, getAllKelas, getAllSiswa, getAllJadwal, getAuditLogs, addOrUpdateKelas, addOrUpdateSiswa, addOrUpdateSiswaBatch, addOrUpdateJadwal, deleteJadwal, deleteSiswa } from '../services/storage';
+import { getAllUsers, getAllGuru, getAllKelas, getAllSiswa, getAllJadwal, getAuditLogs, logAudit, addOrUpdateKelas, addOrUpdateSiswa, addOrUpdateSiswaBatch, addOrUpdateJadwal, deleteJadwal, deleteSiswa } from '../services/storage';
 
 export default function AdminDashboard({ user }) {
   const [activeTab, setActiveTab] = useState('jadwal'); // 'jadwal', 'siswa', 'guru', 'logs'
@@ -152,22 +152,39 @@ export default function AdminDashboard({ user }) {
         {
           'NIS': '1001',
           'NISN': '0051234567',
-          'Nama Siswa': 'Budi Santoso',
-          'Nama Kelas': '10 IPA 1',
+          'Nama Siswa': 'Ahmad Rizky Pratama',
+          'Nama Kelas': '5A',
           'Jenis Kelamin (L/P)': 'L',
           'QR Code': 'QR-1001'
         },
         {
           'NIS': '1002',
           'NISN': '0051234568',
-          'Nama Siswa': 'Siti Rahma',
-          'Nama Kelas': '10 IPA 1',
+          'Nama Siswa': 'Anisa Rahmawati',
+          'Nama Kelas': '5A',
           'Jenis Kelamin (L/P)': 'P',
           'QR Code': 'QR-1002'
+        },
+        {
+          'NIS': '1003',
+          'NISN': '0051234569',
+          'Nama Siswa': 'Bagus Setiawan',
+          'Nama Kelas': '5B',
+          'Jenis Kelamin (L/P)': 'L',
+          'QR Code': 'QR-1003'
         }
       ];
 
       const ws = XLSX.utils.json_to_sheet(templateData);
+      ws['!cols'] = [
+        { wch: 15 }, // NIS
+        { wch: 15 }, // NISN
+        { wch: 30 }, // Nama Siswa
+        { wch: 15 }, // Nama Kelas
+        { wch: 22 }, // Jenis Kelamin (L/P)
+        { wch: 18 }  // QR Code
+      ];
+
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Template Siswa');
       XLSX.writeFile(wb, 'Template_Import_Siswa_PJOK.xlsx');
